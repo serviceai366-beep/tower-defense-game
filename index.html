@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tower Defense: Зомби-Апокалипсис</title>
+    <meta name="description" content="Tower Defense: Зомби-Апокалипсис — стратегическая игра защиты базы от волн зомби">
+    <meta name="theme-color" content="#0a0d14">
+    <meta property="og:title" content="Tower Defense: Зомби-Апокалипсис">
+    <meta property="og:description" content="Стратегическая tower defense игра с режимами сложности, картами, турелями, способностями и волнами зомби.">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="assets/gpt-image-2-art-direction.png">
+    <link rel="icon" type="image/png" href="assets/abilities/fortress.png">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div id="app">
+        <!-- TOP BAR: ресурсы, таймер, управление -->
+        <div id="top-bar">
+            <div class="top-section" id="top-resources">
+                <div class="top-stat">
+                    <span class="top-stat-icon">&#x1F4B0;</span>
+                    <span class="top-stat-label">ДЕНЬГИ</span>
+                    <span class="top-stat-value" id="gold-value">200</span>
+                </div>
+                <div class="top-stat">
+                    <span class="top-stat-icon">&#x2764;&#xFE0F;</span>
+                    <span class="top-stat-label">БАЗА</span>
+                    <span class="top-stat-value top-stat-hp" id="lives-value">25</span>
+                </div>
+                <div class="top-stat">
+                    <span class="top-stat-icon">&#x1F30A;</span>
+                    <span class="top-stat-label">ВОЛНА</span>
+                    <span class="top-stat-value top-stat-wave" id="wave-value">0 / 20</span>
+                </div>
+            </div>
+
+            <div class="top-section" id="top-center">
+                <div class="top-section" id="top-abilities">
+                    <button id="ability-fortress" class="ability-btn" type="button" title="Бастион">
+                        <span class="ability-icon">🛡</span>
+                        <span class="ability-timer" id="ability-timer-fortress">1:00</span>
+                        <span class="ability-charges" id="ability-charges-fortress">0</span>
+                    </button>
+                    <button id="ability-freeze" class="ability-btn" type="button" title="Крио-Стоп">
+                        <span class="ability-icon">❄</span>
+                        <span class="ability-timer" id="ability-timer-freeze">2:00</span>
+                        <span class="ability-charges" id="ability-charges-freeze">0</span>
+                    </button>
+                    <button id="ability-sunfall" class="ability-btn" type="button" title="Солнечный Выжигатель">
+                        <span class="ability-icon">☀</span>
+                        <span class="ability-timer" id="ability-timer-sunfall">3:00</span>
+                        <span class="ability-charges" id="ability-charges-sunfall">0</span>
+                    </button>
+                </div>
+                <div class="top-section" id="top-timer">
+                    <div id="wave-timer-panel">
+                        <div class="timer-header-inline">
+                            <span>&#x23F1; СЛЕД. ВОЛНА:</span>
+                            <strong id="timer-value">18с</strong>
+                            <span class="timer-bonus-inline">БОНУС: +<span id="bonus-value">20</span>&#x1F4B0;</span>
+                        </div>
+                        <div class="timer-bar">
+                            <div class="timer-bar-fill" id="timer-bar-fill"></div>
+                        </div>
+                    </div>
+                    <div class="wave-status-text" id="wave-status" style="display:none">&#x2694; ВОЛНА — БОЙ...</div>
+                </div>
+            </div>
+
+            <div class="top-section" id="top-controls">
+                <button id="btn-skip" class="btn btn-warning btn-sm">&#x23ED; НАЧАТЬ (+БОНУС)</button>
+                <button id="btn-pause" class="btn btn-secondary btn-sm">&#x25AE;&#x25AE; ПАУЗА</button>
+                <button id="btn-speed" class="btn btn-secondary btn-sm">&#x25B6; x1</button>
+                <button id="btn-restart" class="btn btn-danger btn-sm">&#x1F504;</button>
+                <button id="btn-open-settings" class="floating-settings-btn" type="button" aria-label="Открыть настройки">&#9881;</button>
+            </div>
+        </div>
+
+        <div id="game-container">
+            <div id="canvas-wrapper">
+                <canvas id="gameCanvas"></canvas>
+                <div id="canvas-hud">
+                    <div id="layout-controls">
+                        <button id="btn-toggle-top-ui" class="hud-toggle-btn" type="button" aria-label="Скрыть верхнюю панель" title="Верхняя панель">
+                            <span class="hud-toggle-icon">&#x25B2;</span>
+                        </button>
+                        <button id="btn-toggle-sidebar" class="hud-toggle-btn" type="button" aria-label="Скрыть правую панель" title="Правая панель">
+                            <span class="hud-toggle-icon">&#x25B6;</span>
+                        </button>
+                        <button id="btn-map-only" class="hud-toggle-btn hud-toggle-accent" type="button" aria-label="Режим карты" title="Только карта">
+                            <span class="hud-toggle-icon">&#x26F6;</span>
+                        </button>
+                    </div>
+                    <div id="tower-action-hud" aria-hidden="true">
+                        <button id="hud-upgrade" class="tower-hud-btn tower-hud-upgrade" type="button">⬆</button>
+                        <button id="hud-sell" class="tower-hud-btn tower-hud-sell" type="button">💰</button>
+                        <button id="hud-info" class="tower-hud-btn tower-hud-info" type="button">ℹ</button>
+                    </div>
+                    <div id="silo-action-hud" aria-hidden="true">
+                        <div class="silo-hud-card">
+                            <div class="silo-hud-head">
+                                <div class="silo-hud-title">☢ ШАХТА</div>
+                                <div id="silo-hud-status" class="silo-hud-status">Готово к пуску</div>
+                            </div>
+                            <div class="silo-hud-section">
+                                <div class="silo-hud-label">АРСЕНАЛ</div>
+                                <div class="silo-hud-stock">
+                                    <button id="silo-select-tactical" class="silo-stock-chip" type="button">🚀 <span>МАЛ</span> <strong id="silo-count-tactical">0</strong></button>
+                                    <button id="silo-select-strategic" class="silo-stock-chip" type="button">🛰 <span>СТР</span> <strong id="silo-count-strategic">0</strong></button>
+                                    <button id="silo-select-tsar" class="silo-stock-chip" type="button">☢ <span>ЦАРЬ</span> <strong id="silo-count-tsar">0</strong></button>
+                                </div>
+                            </div>
+                            <div class="silo-hud-section">
+                                <div class="silo-hud-label">ПОКУПКА</div>
+                                <div class="silo-hud-actions">
+                                    <button id="silo-buy-tactical" class="silo-action-btn silo-action-buy" type="button">КУПИТЬ МАЛУЮ</button>
+                                    <button id="silo-buy-strategic" class="silo-action-btn silo-action-buy" type="button">КУПИТЬ СТРАТ</button>
+                                    <button id="silo-buy-tsar" class="silo-action-btn silo-action-buy" type="button">КУПИТЬ ЦАРЬ</button>
+                                </div>
+                            </div>
+                            <div class="silo-hud-footer">
+                                <button id="silo-info" class="silo-action-btn silo-action-info" type="button">ИНФО</button>
+                                <button id="silo-sell" class="silo-action-btn silo-action-sell" type="button">ПРОДАТЬ</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <aside id="sidebar">
+                <div class="panel" id="towers-panel">
+                    <h2 class="panel-title">&#x1F3D7; СТРОЙКА</h2>
+                    <div class="panel-subtitle">&#x1F9F1; БАРЬЕРЫ</div>
+                    <div class="tower-grid wall-grid">
+                        <button class="tower-btn wall-btn" data-type="lightWall">
+                            <div class="tower-btn-icon">&#x1F9F1;</div>
+                            <div class="tower-btn-name">Лёгкая</div>
+                            <div class="tower-btn-cost">&#x1F4B0; 75</div>
+                            <div class="tower-btn-lock" style="display:none"></div>
+                        </button>
+                        <button class="tower-btn wall-btn" data-type="mediumWall">
+                            <div class="tower-btn-icon">&#x1F9F1;</div>
+                            <div class="tower-btn-name">Средняя</div>
+                            <div class="tower-btn-cost">&#x1F4B0; 225</div>
+                            <div class="tower-btn-lock" style="display:none"></div>
+                        </button>
+                        <button class="tower-btn wall-btn" data-type="heavyWall">
+                            <div class="tower-btn-icon">&#x1F9F1;</div>
+                            <div class="tower-btn-name">Тяжёлая</div>
+                            <div class="tower-btn-cost">&#x1F4B0; 375</div>
+                            <div class="tower-btn-lock" style="display:none"></div>
+                        </button>
+                    </div>
+                    <div class="panel-subtitle">&#x1F52B; ТУРЕЛИ</div>
+                    <div class="tower-grid">
+                        <button class="tower-btn" data-type="pistol">
+                            <div class="tower-btn-icon">&#x1F52B;</div>
+                            <div class="tower-btn-name">Пистолет</div>
+                            <div class="tower-btn-cost">&#x1F4B0; 35</div>
+                            <div class="tower-btn-lock" style="display:none"></div>
+                        </button>
+                        <button class="tower-btn" data-type="machinegun">
+                            <div class="tower-btn-icon">&#x2699;</div>
+                            <div class="tower-btn-name">Пулемёт</div>
+                            <div class="tower-btn-cost">&#x1F4B0; 115</div>
+                            <div class="tower-btn-lock" style="display:none"></div>
+                        </button>
+                        <button class="tower-btn" data-type="farm">
+                            <div class="tower-btn-icon">&#x1F33E;</div>
+                            <div class="tower-btn-name">Ферма</div>
+                            <div class="tower-btn-cost">&#x1F4B0; 200</div>
+                            <div class="tower-btn-lock" style="display:none"></div>
+                        </button>
+                        <button class="tower-btn" data-type="scanner">
+                            <div class="tower-btn-icon">&#x1F4E1;</div>
+                            <div class="tower-btn-name">Сканер</div>
+                            <div class="tower-btn-cost">&#x1F4B0; 175</div>
+                            <div class="tower-btn-lock" style="display:none"></div>
+                        </button>
+                        <button class="tower-btn" data-type="rifle">
+                            <div class="tower-btn-icon">&#x1F3AF;</div>
+                            <div class="tower-btn-name">Стрелковая</div>
+                            <div class="tower-btn-cost">&#x1F4B0; 200</div>
+                            <div class="tower-btn-lock" style="display:none"></div>
+                        </button>
+                        <button class="tower-btn" data-type="healer">
+                            <div class="tower-btn-icon">&#x1F527;</div>
+                            <div class="tower-btn-name">Ремонтная</div>
+                            <div class="tower-btn-cost">&#x1F4B0; 225</div>
+                            <div class="tower-btn-lock" style="display:none"></div>
+                        </button>
+                        <button class="tower-btn" data-type="flamethrower">
+                            <div class="tower-btn-icon">&#x1F525;</div>
+                            <div class="tower-btn-name">Огнемёт</div>
+                            <div class="tower-btn-cost">&#x1F4B0; 300</div>
+                            <div class="tower-btn-lock" style="display:none"></div>
+                        </button>
+                        <button class="tower-btn" data-type="cryo">
+                            <div class="tower-btn-icon">&#x2744;</div>
+                            <div class="tower-btn-name">Крио-пушка</div>
+                            <div class="tower-btn-cost">&#x1F4B0; 275</div>
+                            <div class="tower-btn-lock" style="display:none"></div>
+                        </button>
+                        <button class="tower-btn" data-type="grenade">
+                            <div class="tower-btn-icon">&#x1F4A3;</div>
+                            <div class="tower-btn-name">Гранатомёт</div>
+                            <div class="tower-btn-cost">&#x1F4B0; 300</div>
+                            <div class="tower-btn-lock" style="display:none"></div>
+                        </button>
+                        <button class="tower-btn" data-type="sniper">
+                            <div class="tower-btn-icon">&#x1F52D;</div>
+                            <div class="tower-btn-name">Снайперская</div>
+                            <div class="tower-btn-cost">&#x1F4B0; 350</div>
+                            <div class="tower-btn-lock" style="display:none"></div>
+                        </button>
+                        <button class="tower-btn" data-type="rocket">
+                            <div class="tower-btn-icon">&#x1F680;</div>
+                            <div class="tower-btn-name">Ракетная</div>
+                            <div class="tower-btn-cost">&#x1F4B0; 450</div>
+                            <div class="tower-btn-lock" style="display:none"></div>
+                        </button>
+                        <button class="tower-btn" data-type="pulse">
+                            <div class="tower-btn-icon">&#x1F4F3;</div>
+                            <div class="tower-btn-name">Импульсная</div>
+                            <div class="tower-btn-cost">&#x1F4B0; 430</div>
+                            <div class="tower-btn-lock" style="display:none"></div>
+                        </button>
+                        <button class="tower-btn" data-type="tesla">
+                            <div class="tower-btn-icon">&#x26A1;</div>
+                            <div class="tower-btn-name">Тесла</div>
+                            <div class="tower-btn-cost">&#x1F4B0; 500</div>
+                            <div class="tower-btn-lock" style="display:none"></div>
+                        </button>
+                        <button class="tower-btn" data-type="airfield">
+                            <div class="tower-btn-icon">&#x2708;</div>
+                            <div class="tower-btn-name">Аэродром</div>
+                            <div class="tower-btn-cost">&#x1F4B0; 575</div>
+                            <div class="tower-btn-lock" style="display:none"></div>
+                        </button>
+                        <button class="tower-btn" data-type="nukeSilo">
+                            <div class="tower-btn-icon">&#x2622;</div>
+                            <div class="tower-btn-name">Ядерное</div>
+                            <div class="tower-btn-cost">&#x1F4B0; 800</div>
+                            <div class="tower-btn-lock" style="display:none"></div>
+                        </button>
+                        <button class="tower-btn" data-type="railgun">
+                            <div class="tower-btn-icon">&#x1F52C;</div>
+                            <div class="tower-btn-name">Рельсотрон</div>
+                            <div class="tower-btn-cost">&#x1F4B0; 600</div>
+                            <div class="tower-btn-lock" style="display:none"></div>
+                        </button>
+                    </div>
+                    <p class="hint">Стены ставятся на дорогу · турели рядом с дорогой · ПКМ — отмена</p>
+                </div>
+                <div class="panel" id="tower-info" style="display:none;"></div>
+            </aside>
+        </div>
+        <div id="settings-drawer">
+            <div class="settings-drawer-head">
+                <div>
+                    <div class="settings-kicker">СИСТЕМА</div>
+                    <h3 class="settings-title">&#9881; Настройки</h3>
+                </div>
+                <button id="btn-close-settings" class="settings-close-btn" type="button" aria-label="Закрыть настройки">&#10005;</button>
+            </div>
+            <div class="settings-intro">
+                Подстрой звук, клавиши и быстрые параметры под свой стиль игры. Все изменения применяются сразу.
+            </div>
+            <div class="settings-group">
+                <div class="settings-section-head">
+                    <div class="settings-group-title">🎛 Аудио</div>
+                    <div class="settings-group-copy">Громкость, режимы и музыкальные темы боя.</div>
+                </div>
+                <div class="settings-card-list">
+                    <div class="settings-card">
+                        <div class="setting-row">
+                            <div class="setting-copy-block">
+                                <span class="setting-label">&#x1F3B5; Музыка</span>
+                                <span class="setting-copy">Фон боя, меню и атмосферные петли</span>
+                            </div>
+                            <button id="btn-music-toggle" class="btn-toggle" type="button">ВКЛ</button>
+                        </div>
+                        <div class="setting-slider-row">
+                            <input type="range" id="music-vol" class="vol-slider" min="0" max="100" value="25">
+                            <span id="music-vol-value" class="setting-value-pill">25%</span>
+                        </div>
+                    </div>
+                    <div class="settings-card">
+                        <div class="setting-row">
+                            <div class="setting-copy-block">
+                                <span class="setting-label">&#x1F50A; Эффекты</span>
+                                <span class="setting-copy">Выстрелы, взрывы, сигналы и удары</span>
+                            </div>
+                            <button id="btn-sfx-toggle" class="btn-toggle" type="button">ВКЛ</button>
+                        </div>
+                        <div class="setting-slider-row">
+                            <input type="range" id="sfx-vol" class="vol-slider" min="0" max="100" value="50">
+                            <span id="sfx-vol-value" class="setting-value-pill">50%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-section-head settings-section-spaced">
+                    <div class="settings-group-title">🎼 Музыкальные Темы</div>
+                    <div class="settings-group-copy">Выбери саунд-дизайн, который будет крутиться во время матча.</div>
+                </div>
+                <div id="music-theme-list" class="music-theme-list"></div>
+            </div>
+            <div class="settings-group">
+                <div class="settings-group-title">⌨ Горячие Клавиши</div>
+                <div class="settings-group-copy">Нажми на кнопку, затем на новую клавишу. Повторы запрещены.</div>
+                <div id="hotkey-settings-list" class="hotkey-settings-list"></div>
+                <div id="hotkey-settings-status" class="hotkey-settings-status"></div>
+                <button id="btn-hotkeys-reset" class="btn btn-secondary settings-reset-btn" type="button">↺ ВЕРНУТЬ КЛАВИШИ ПО УМОЛЧАНИЮ</button>
+            </div>
+            <div class="settings-actions">
+                <button id="btn-return-main-menu" class="btn btn-secondary" type="button">&#x2302; ГЛАВНОЕ МЕНЮ</button>
+                <button id="btn-settings-restart" class="btn btn-danger" type="button">&#x1F504; ПЕРЕЗАПУСК КАРТЫ</button>
+            </div>
+        </div>
+        <div id="start-screen">
+            <div class="start-screen-shell">
+                <section id="main-menu-view" class="menu-view main-menu-view">
+                    <div class="main-menu-copy">
+                        <div class="start-kicker">ДОБРО ПОЖАЛОВАТЬ</div>
+                        <h1 class="main-menu-title">Tower Defense: Зомби-Апокалипсис</h1>
+                        <p class="start-copy">Удерживай маршруты, ставь турели, используй способности и переживи 20 волн. Перед стартом выбери режим сложности и карту операции.</p>
+                        <div class="main-menu-actions">
+                            <button id="btn-open-mode-select" class="btn btn-primary main-menu-btn" type="button">▶ ВЫБРАТЬ РЕЖИМ</button>
+                            <button id="btn-main-settings" class="btn btn-secondary main-menu-btn" type="button">⚙ НАСТРОЙКИ</button>
+                        </div>
+                    </div>
+                    <div id="difficulty-panel" class="difficulty-panel" aria-hidden="true">
+                        <div class="difficulty-panel-head">
+                            <div class="start-kicker">РЕЖИМ ИГРЫ</div>
+                            <h2 class="start-title">Выбери сложность</h2>
+                        </div>
+                        <div id="difficulty-grid" class="difficulty-grid"></div>
+                        <div class="difficulty-actions">
+                            <button id="btn-continue-map-select" class="btn btn-primary main-menu-btn" type="button">ДАЛЬШЕ: ВЫБОР КАРТЫ</button>
+                        </div>
+                    </div>
+                </section>
+                <section id="map-select-view" class="menu-view map-select-view" hidden>
+                    <div class="start-screen-head">
+                        <div>
+                            <div class="start-kicker">ОПЕРАЦИЯ</div>
+                            <h2 class="start-title">Выбор Карты</h2>
+                            <p class="start-copy">Выбери арену перед началом обороны. Карты отличаются маршрутом, атмосферой и тактическими окнами.</p>
+                        </div>
+                        <button id="btn-back-main-menu" class="btn btn-secondary back-menu-btn" type="button">← МЕНЮ</button>
+                    </div>
+                    <div class="start-screen-body">
+                        <div id="map-card-grid" class="map-card-grid"></div>
+                        <div id="map-detail-panel" class="map-detail-panel">
+                            <div class="map-detail-preview" id="map-detail-preview"></div>
+                            <div class="map-detail-meta">
+                                <div class="map-detail-badge" id="map-detail-badge"></div>
+                                <h3 id="map-detail-title"></h3>
+                                <p id="map-detail-description"></p>
+                                <div id="map-detail-tags" class="map-detail-tags"></div>
+                                <div id="selected-difficulty-summary" class="selected-difficulty-summary"></div>
+                            </div>
+                            <button id="btn-start-map" class="btn btn-primary start-map-btn">▶ НАЧАТЬ ОБОРОНУ</button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+        <div id="game-overlay" style="display:none;">
+            <div class="overlay-content">
+                <h2 id="overlay-title">ПОБЕДА</h2>
+                <p id="overlay-message"></p>
+                <button id="overlay-btn" class="btn btn-primary">&#x1F504; ИГРАТЬ СНОВА</button>
+            </div>
+        </div>
+    </div>
+    <script src="js/sprites.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/map.js"></script>
+    <script src="js/enemy.js"></script>
+    <script src="js/tower.js"></script>
+    <script src="js/projectile.js"></script>
+    <script src="js/effects.js"></script>
+    <script src="js/waves.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/game.js"></script>
+</body>
+
+</html>
