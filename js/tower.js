@@ -340,22 +340,22 @@ class Tower {
     }
     getBarrelProfile() {
         const profiles = {
-            pistol: { length: 26, width: 11, color: '#cbd5e1', glow: '#facc15', kind: 'compact' },
-            machinegun: { length: 36, width: 16, color: '#9ca3af', glow: '#fde047', kind: 'shroud' },
-            rifle: { length: 36, width: 10, color: '#d6b28b', glow: '#fb923c', kind: 'rifle' },
-            flamethrower: { length: 26, width: 13, color: '#b45309', glow: '#fb923c', cone: true },
-            sniper: { length: 43, width: 7, color: '#94a3b8', glow: '#ef4444' },
-            grenade: { length: 31, width: 15, color: '#6b7f45', glow: '#ff5722' },
-            cryo: { length: 35, width: 12, color: '#67e8f9', glow: '#67e8f9' },
-            rocket: { length: 35, width: 17, color: '#9ca3af', glow: '#ef4444', pods: true },
-            tesla: { length: 20, width: 12, color: '#60a5fa', glow: '#60a5fa', orb: true },
-            railgun: { length: 48, width: 10, color: '#93c5fd', glow: '#60a5fa', rail: true },
+            pistol: { length: 34, width: 11, color: '#cbd5e1', glow: '#facc15', kind: 'compact', artWidth: 54, pivot: 0.24, muzzle: 31 },
+            machinegun: { length: 43, width: 16, color: '#9ca3af', glow: '#fde047', kind: 'shroud', artWidth: 68, pivot: 0.22, muzzle: 42 },
+            rifle: { length: 42, width: 10, color: '#d6b28b', glow: '#fb923c', kind: 'rifle', artWidth: 70, pivot: 0.22, muzzle: 42 },
+            flamethrower: { length: 34, width: 13, color: '#b45309', glow: '#fb923c', cone: true, artWidth: 62, pivot: 0.22, muzzle: 35 },
+            sniper: { length: 50, width: 7, color: '#94a3b8', glow: '#ef4444', artWidth: 74, pivot: 0.23, muzzle: 49 },
+            grenade: { length: 36, width: 15, color: '#6b7f45', glow: '#ff5722', artWidth: 60, pivot: 0.24, muzzle: 35 },
+            cryo: { length: 41, width: 12, color: '#67e8f9', glow: '#67e8f9', artWidth: 64, pivot: 0.23, muzzle: 40 },
+            rocket: { length: 38, width: 17, color: '#9ca3af', glow: '#ef4444', pods: true, artWidth: 62, pivot: 0.24, muzzle: 37 },
+            tesla: { length: 34, width: 12, color: '#60a5fa', glow: '#60a5fa', orb: true, artWidth: 58, pivot: 0.22, muzzle: 35 },
+            railgun: { length: 54, width: 10, color: '#93c5fd', glow: '#60a5fa', rail: true, artWidth: 78, pivot: 0.22, muzzle: 53 },
         };
         return profiles[this.type] || null;
     }
     getMuzzlePoint(originX = this.x, originY = this.y) {
         const profile = this.getBarrelProfile();
-        const length = profile ? profile.length : 22;
+        const length = profile ? (profile.muzzle || profile.length) : 22;
         return {
             x: originX + Math.cos(this.turretAngle) * length,
             y: originY + Math.sin(this.turretAngle) * length,
@@ -457,6 +457,11 @@ class Tower {
         const profile = this.getBarrelProfile();
         if (!profile || this.isBusy()) return;
         const recoil = Math.max(0, this.muzzleFlash) * 18;
+        const art = typeof GameSprites !== 'undefined' ? GameSprites.barrel(this.type) : null;
+        if (art) {
+            this.drawArtBarrel(ctx, x, y, profile, art, recoil);
+            return;
+        }
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(this.turretAngle);
@@ -587,6 +592,48 @@ class Tower {
                 ctx.beginPath();
                 ctx.arc(muzzleX, 0, 7 + this.muzzleFlash * 22, 0, Math.PI * 2);
                 ctx.fillStyle = `rgba(255,215,80,${Math.min(0.8, this.muzzleFlash * 8)})`;
+                ctx.fill();
+                ctx.strokeStyle = profile.glow;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+        }
+        ctx.restore();
+    }
+    drawArtBarrel(ctx, x, y, profile, art, recoil) {
+        const flash = Math.max(0, this.muzzleFlash);
+        const w = profile.artWidth || Math.max(48, profile.length + 20);
+        const h = w * (art.naturalHeight / art.naturalWidth);
+        const pivotX = w * (profile.pivot ?? 0.22);
+        const recoilShift = Math.min(7, recoil * 0.26);
+        const muzzleX = Math.max(profile.length, w - pivotX - 3) - recoilShift;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(this.turretAngle);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(art, -pivotX - recoilShift, -h / 2, w, h);
+        if (flash > 0) {
+            if (profile.cone) {
+                ctx.beginPath();
+                ctx.moveTo(muzzleX, 0);
+                ctx.lineTo(muzzleX + 30, -11);
+                ctx.lineTo(muzzleX + 30, 11);
+                ctx.closePath();
+                ctx.fillStyle = `rgba(249,115,22,${Math.min(0.82, flash * 8)})`;
+                ctx.fill();
+            } else if (profile.orb || profile.rail) {
+                ctx.beginPath();
+                ctx.arc(muzzleX, 0, 7 + flash * 18, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(96,165,250,${Math.min(0.78, flash * 7)})`;
+                ctx.fill();
+                ctx.strokeStyle = profile.glow;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            } else {
+                ctx.beginPath();
+                ctx.arc(muzzleX, 0, 6 + flash * 20, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255,215,80,${Math.min(0.78, flash * 8)})`;
                 ctx.fill();
                 ctx.strokeStyle = profile.glow;
                 ctx.lineWidth = 2;
