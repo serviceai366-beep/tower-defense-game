@@ -396,6 +396,11 @@ body.ui-map-only .floating-test-btn {
     white-space: nowrap;
 }
 
+.language-btn {
+    min-width: 44px;
+    padding-inline: 8px;
+}
+
 #game-container {
     flex: 1;
     display: flex;
@@ -2206,7 +2211,7 @@ body.ui-map-only #settings-drawer {
     #top-controls {
         order: 2;
         display: grid;
-        grid-template-columns: minmax(108px, 1.55fr) minmax(74px, 1fr) minmax(56px, 0.78fr) 42px 42px;
+        grid-template-columns: minmax(104px, 1.48fr) minmax(70px, 0.95fr) minmax(54px, 0.72fr) 38px 40px 40px;
         gap: 4px;
         padding-right: 0;
     }
@@ -2219,8 +2224,14 @@ body.ui-map-only #settings-drawer {
 
     #top-controls .btn-sm {
         padding-inline: 5px;
-        font-size: 0.64rem;
+        font-size: 0.62rem;
         letter-spacing: 0.2px;
+    }
+
+    #top-controls .language-btn {
+        min-width: 0;
+        padding-inline: 0;
+        font-size: 0.68rem;
     }
 
     #btn-skip {

@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tower Defense: Зомби-Апокалипсис</title>
-    <meta name="description" content="Tower Defense: Зомби-Апокалипсис — стратегическая игра защиты базы от волн зомби">
+    <title>Tower Defense: Zombie Apocalypse</title>
+    <meta name="description" content="Tower Defense: Zombie Apocalypse is a strategy game about defending your base from waves of zombies.">
     <meta name="theme-color" content="#0a0d14">
-    <meta property="og:title" content="Tower Defense: Зомби-Апокалипсис">
-    <meta property="og:description" content="Стратегическая tower defense игра с режимами сложности, картами, турелями, способностями и волнами зомби.">
+    <meta property="og:title" content="Tower Defense: Zombie Apocalypse">
+    <meta property="og:description" content="A strategy tower defense game with difficulty modes, custom maps, turrets, abilities, and zombie waves.">
     <meta property="og:type" content="website">
     <meta property="og:image" content="assets/gpt-image-2-art-direction.png">
     <link rel="icon" type="image/png" href="assets/abilities/fortress.png">
@@ -78,6 +78,7 @@
                 <button id="btn-pause" class="btn btn-secondary btn-sm">&#x25AE;&#x25AE; ПАУЗА</button>
                 <button id="btn-speed" class="btn btn-secondary btn-sm">&#x25B6; x1</button>
                 <button id="btn-restart" class="btn btn-danger btn-sm">&#x1F504;</button>
+                <button id="btn-language" class="btn btn-secondary btn-sm language-btn language-switch" type="button" aria-label="Switch language">RU</button>
                 <button id="btn-open-settings" class="floating-settings-btn" type="button" aria-label="Открыть настройки">&#9881;</button>
             </div>
         </div>
@@ -332,6 +333,7 @@
                         <div class="main-menu-actions">
                             <button id="btn-open-mode-select" class="btn btn-primary main-menu-btn" type="button">▶ ВЫБРАТЬ РЕЖИМ</button>
                             <button id="btn-main-settings" class="btn btn-secondary main-menu-btn" type="button">⚙ НАСТРОЙКИ</button>
+                            <button class="btn btn-secondary main-menu-btn language-switch" type="button" aria-label="Switch language">RU</button>
                         </div>
                     </div>
                     <div id="difficulty-panel" class="difficulty-panel" aria-hidden="true">
@@ -388,6 +390,7 @@
     <script src="js/effects.js"></script>
     <script src="js/waves.js"></script>
     <script src="js/audio.js"></script>
+    <script src="js/i18n.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/game.js"></script>
 </body>
