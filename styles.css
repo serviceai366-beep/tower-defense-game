@@ -1431,6 +1431,78 @@ body.ui-map-only #canvas-wrapper {
     min-width: 180px;
 }
 
+.multiplayer-panel {
+    margin-top: 18px;
+    padding: 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    background: rgba(6, 10, 18, 0.48);
+    max-width: 560px;
+}
+
+.multiplayer-title {
+    color: #93c5fd;
+    font-size: 0.68rem;
+    font-weight: 900;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    margin-bottom: 9px;
+}
+
+.multiplayer-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.multiplayer-input {
+    min-width: 0;
+    width: 100%;
+    min-height: 42px;
+    padding: 9px 11px;
+    border-radius: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    background: rgba(15, 23, 42, 0.82);
+    color: #f8fafc;
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 800;
+    outline: none;
+}
+
+.multiplayer-input:focus {
+    border-color: rgba(96, 165, 250, 0.7);
+    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.12);
+}
+
+.room-code-input {
+    flex: 1 1 140px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+}
+
+.multiplayer-btn {
+    width: auto;
+    min-width: 112px;
+    flex: 0 0 auto;
+}
+
+.room-status {
+    margin-top: 9px;
+    min-height: 18px;
+    color: #a7b1bb;
+    font-size: 0.66rem;
+    line-height: 1.4;
+}
+
+.room-status.ready {
+    color: #86efac;
+}
+
+.room-status.error {
+    color: #fca5a5;
+}
+
 .difficulty-panel {
     display: none;
     padding: 18px;
@@ -2318,6 +2390,14 @@ body.ui-map-only #settings-drawer {
     .main-menu-actions,
     .difficulty-actions {
         flex-direction: column;
+    }
+
+    .multiplayer-row {
+        flex-direction: column;
+    }
+
+    .multiplayer-btn {
+        width: 100%;
     }
 
     .main-menu-btn,

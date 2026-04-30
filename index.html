@@ -335,6 +335,18 @@
                             <button id="btn-main-settings" class="btn btn-secondary main-menu-btn" type="button">⚙ НАСТРОЙКИ</button>
                             <button class="btn btn-secondary main-menu-btn language-switch" type="button" aria-label="Switch language">RU</button>
                         </div>
+                        <div id="multiplayer-panel" class="multiplayer-panel">
+                            <div class="multiplayer-title">ONLINE CO-OP</div>
+                            <div class="multiplayer-row">
+                                <input id="multiplayer-server-url" class="multiplayer-input" type="url" value="http://localhost:8787" aria-label="Multiplayer server URL">
+                            </div>
+                            <div class="multiplayer-row">
+                                <button id="btn-create-room" class="btn btn-secondary multiplayer-btn" type="button">CREATE ROOM</button>
+                                <input id="room-code-input" class="multiplayer-input room-code-input" type="text" maxlength="10" placeholder="ROOM CODE" aria-label="Room code">
+                                <button id="btn-join-room" class="btn btn-secondary multiplayer-btn" type="button">JOIN</button>
+                            </div>
+                            <div id="room-status" class="room-status">Solo mode. Start a room to play together.</div>
+                        </div>
                     </div>
                     <div id="difficulty-panel" class="difficulty-panel" aria-hidden="true">
                         <div class="difficulty-panel-head">
@@ -393,6 +405,7 @@
     <script src="js/i18n.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/game.js"></script>
+    <script src="js/multiplayer.js"></script>
 </body>
 
 </html>
