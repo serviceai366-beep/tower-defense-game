@@ -42,10 +42,22 @@ const SPRITE_PATHS = {
         heavyWall: 'assets/sprites/towers/heavyWall.png',
         construction: 'assets/sprites/towers/construction.png',
     },
+    barrels: {
+        pistol: 'assets/sprites/barrels/pistol.png',
+        machinegun: 'assets/sprites/barrels/machinegun.png',
+        rifle: 'assets/sprites/barrels/rifle.png',
+        flamethrower: 'assets/sprites/barrels/flamethrower.png',
+        sniper: 'assets/sprites/barrels/sniper.png',
+        grenade: 'assets/sprites/barrels/grenade.png',
+        cryo: 'assets/sprites/barrels/cryo.png',
+        rocket: 'assets/sprites/barrels/rocket.png',
+        tesla: 'assets/sprites/barrels/tesla.png',
+        railgun: 'assets/sprites/barrels/railgun.png',
+    },
 };
 
 const GameSprites = (() => {
-    const cache = { enemies: {}, towers: {} };
+    const cache = { enemies: {}, towers: {}, barrels: {} };
 
     function loadGroup(group) {
         Object.entries(SPRITE_PATHS[group]).forEach(([key, path]) => {
@@ -58,6 +70,7 @@ const GameSprites = (() => {
 
     loadGroup('enemies');
     loadGroup('towers');
+    loadGroup('barrels');
 
     function get(group, key) {
         const image = cache[group]?.[key];
@@ -67,5 +80,6 @@ const GameSprites = (() => {
     return {
         enemy(key) { return get('enemies', key); },
         tower(key) { return get('towers', key); },
+        barrel(key) { return get('barrels', key); },
     };
 })();
