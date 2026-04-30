@@ -51,6 +51,38 @@ class Enemy {
         this.didHitWallThisFrame = false; this.impactedWall = null; this.wallDamageThisFrame = 0;
     }
     takeDamage(amount) { this.hp -= amount; if (this.hp <= 0) { this.hp = 0; this.isDead = true; } }
+    toSnapshot() {
+        return {
+            type: this.type, hp: this.hp, maxHp: this.maxHp, baseSpeed: this.baseSpeed, speed: this.speed,
+            reward: this.reward, distance: this.distance, x: this.x, y: this.y, angle: this.angle,
+            pathIndex: this.pathIndex, isDead: this.isDead, reachedEnd: this.reachedEnd,
+            isBoss: this.isBoss, bossStage: this.bossStage, bossPersona: this.bossPersona,
+            attackingTower: !!this.attackingTower, slowTimer: this.slowTimer, burnTimer: this.burnTimer,
+            coopBoosted: !!this.coopBoosted,
+        };
+    }
+    applySnapshot(data) {
+        if (!data) return this;
+        this.hp = data.hp ?? this.hp;
+        this.maxHp = data.maxHp ?? this.maxHp;
+        this.baseSpeed = data.baseSpeed ?? this.baseSpeed;
+        this.speed = data.speed ?? this.speed;
+        this.reward = data.reward ?? this.reward;
+        this.distance = data.distance ?? this.distance;
+        this.x = data.x ?? this.x;
+        this.y = data.y ?? this.y;
+        this.angle = data.angle ?? this.angle;
+        this.pathIndex = data.pathIndex ?? this.pathIndex;
+        this.isDead = !!data.isDead;
+        this.reachedEnd = !!data.reachedEnd;
+        this.isBoss = !!data.isBoss;
+        this.bossStage = data.bossStage ?? this.bossStage;
+        this.bossPersona = data.bossPersona || this.bossPersona;
+        this.slowTimer = data.slowTimer ?? this.slowTimer;
+        this.burnTimer = data.burnTimer ?? this.burnTimer;
+        this.coopBoosted = !!data.coopBoosted;
+        return this;
+    }
     applySlow(factor, duration) { this.slowFactor = Math.min(this.slowFactor, factor); this.slowTimer = Math.max(this.slowTimer, duration); }
     applyBurn(dps, duration) {
         if (!dps || !duration || this.isDead) return;

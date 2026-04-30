@@ -37,6 +37,7 @@ class Tower {
         this.y = bounds.centerY;
         this.cooldown = 0; this.target = null; this.turretAngle = 0;
         this.totalInvested = cfg.cost; this.isDestroyed = false; this.muzzleFlash = 0;
+        this.ownerId = 'p1';
         this.canSeeInvisible = this.invisibleDetectionLevel > 0;
         this.buildDuration = cfg.buildTime || 0; this.buildTimer = this.buildDuration;
         this.upgradeDuration = 0; this.upgradeTimer = 0; this.pendingUpgrade = null;
@@ -48,6 +49,42 @@ class Tower {
         this.launchFlash = 0;
     }
     getConfig() { return TOWER_TYPES[this.type]; }
+    toSnapshot() {
+        return {
+            col: this.col, row: this.row, type: this.type, level: this.level, ownerId: this.ownerId || 'p1',
+            hp: this.hp, maxHp: this.maxHp, totalInvested: this.totalInvested, isDestroyed: this.isDestroyed,
+            buildTimer: this.buildTimer, buildDuration: this.buildDuration,
+            upgradeTimer: this.upgradeTimer, upgradeDuration: this.upgradeDuration,
+            cooldown: this.cooldown, turretAngle: this.turretAngle, muzzleFlash: this.muzzleFlash,
+            selectedPayload: this.selectedPayload, payloadStock: { ...(this.payloadStock || {}) },
+            airAngle: this.airAngle, airLaunchProgress: this.airLaunchProgress, rocketTimer: this.rocketTimer,
+            disabledTimer: this.disabledTimer, fortressTimer: this.fortressTimer,
+        };
+    }
+    applySnapshot(data) {
+        if (!data) return this;
+        this.level = data.level ?? this.level;
+        this.ownerId = data.ownerId || this.ownerId || 'p1';
+        this.hp = data.hp ?? this.hp;
+        this.maxHp = data.maxHp ?? this.maxHp;
+        this.totalInvested = data.totalInvested ?? this.totalInvested;
+        this.isDestroyed = !!data.isDestroyed;
+        this.buildTimer = data.buildTimer ?? this.buildTimer;
+        this.buildDuration = data.buildDuration ?? this.buildDuration;
+        this.upgradeTimer = data.upgradeTimer ?? this.upgradeTimer;
+        this.upgradeDuration = data.upgradeDuration ?? this.upgradeDuration;
+        this.cooldown = data.cooldown ?? this.cooldown;
+        this.turretAngle = data.turretAngle ?? this.turretAngle;
+        this.muzzleFlash = data.muzzleFlash ?? this.muzzleFlash;
+        this.selectedPayload = data.selectedPayload || this.selectedPayload;
+        this.payloadStock = data.payloadStock ? { ...data.payloadStock } : this.payloadStock;
+        this.airAngle = data.airAngle ?? this.airAngle;
+        this.airLaunchProgress = data.airLaunchProgress ?? this.airLaunchProgress;
+        this.rocketTimer = data.rocketTimer ?? this.rocketTimer;
+        this.disabledTimer = data.disabledTimer ?? this.disabledTimer;
+        this.fortressTimer = data.fortressTimer ?? this.fortressTimer;
+        return this;
+    }
     getFootprintCells(anchorCol = this.col, anchorRow = this.row) {
         return this.footprint.map(cell => ({ col: anchorCol + cell.x, row: anchorRow + cell.y }));
     }

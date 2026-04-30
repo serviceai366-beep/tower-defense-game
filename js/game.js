@@ -11,13 +11,13 @@ class Game {
         this.enemies = []; this.towers = []; this.projectiles = [];
         this.skyStrikes = [];
         this.effects = []; this.floatingTexts = [];
-        this.gold = CONFIG.START_GOLD; this.lives = CONFIG.START_LIVES;
+        this.gold = CONFIG.START_GOLD; this.playerGold = { p1: CONFIG.START_GOLD, p2: CONFIG.START_GOLD }; this.lives = CONFIG.START_LIVES;
         this.currentWave = 0; this.maxWaveReached = 0;
         this.gameState = 'menu';
         this.waveCountdown = CONFIG.FIRST_WAVE_TIMER;
         this.waveSpawningDone = false;
         this.selectedTowerType = null; this.selectedTower = null; this.selectedTowers = []; this.controlGroups = {}; this.selectedEnemy = null; this.hoveredEnemy = null; this.hoveredTower = null;
-        this.isPaused = false; this.gameSpeed = 1;
+        this.isPaused = false; this.gameSpeed = 1; this.multiplayer = null;
         this.mouseX = 0; this.mouseY = 0; this.mouseScreenX = 0; this.mouseScreenY = 0; this.hoveredCell = null; this.lastTime = 0;
         this.cameraX = 0; this.cameraY = 0;
         this.pointerInsideCanvas = false;
@@ -509,6 +509,37 @@ class Game {
     getDifficultyConfig() {
         return DIFFICULTY_LEVELS[this.selectedDifficultyId] || DIFFICULTY_LEVELS[DEFAULT_DIFFICULTY_ID];
     }
+    setMultiplayerAdapter(adapter) { this.multiplayer = adapter || null; }
+    isRoomActive() { return !!this.multiplayer?.isRoomActive?.(); }
+    isCoopActive() { return !!this.multiplayer?.isCoopActive?.(); }
+    isRemoteViewer() { return !!this.multiplayer?.isGuest?.(); }
+    getLocalPlayerKey() { return this.multiplayer?.getLocalPlayerKey?.() || 'p1'; }
+    getDisplayGold() { return this.isRoomActive() ? (this.playerGold[this.getLocalPlayerKey()] ?? 0) : this.gold; }
+    syncVisibleGold() { this.ui.updateGold(this.getDisplayGold()); }
+    spendPlayerGold(playerKey, amount) {
+        if (!this.isRoomActive()) {
+            if (this.gold < amount) return false;
+            this.gold -= amount;
+            this.playerGold.p1 = this.gold;
+            this.syncVisibleGold();
+            return true;
+        }
+        const key = playerKey || this.getLocalPlayerKey();
+        if ((this.playerGold[key] ?? 0) < amount) return false;
+        this.playerGold[key] -= amount;
+        this.syncVisibleGold();
+        return true;
+    }
+    awardPlayerGold(playerKey, amount) {
+        if (!this.isRoomActive()) {
+            this.gold += amount;
+            this.playerGold.p1 = this.gold;
+        } else {
+            const key = playerKey || this.getLocalPlayerKey();
+            this.playerGold[key] = (this.playerGold[key] || 0) + amount;
+        }
+        this.syncVisibleGold();
+    }
     selectDifficulty(difficultyId) {
         if (!DIFFICULTY_LEVELS[difficultyId]) return this.getDifficultyConfig();
         this.selectedDifficultyId = difficultyId;
@@ -516,14 +547,20 @@ class Game {
     }
     getEnemyDifficultyOverrides(type, overrides = {}) {
         const diff = this.getDifficultyConfig();
-        if (!diff || diff.id === 'hard' || overrides.isBoss) return overrides;
         const cfg = ENEMY_TYPES[type] || {};
-        return {
-            ...overrides,
-            hp: Math.max(1, Math.round((overrides.hp ?? cfg.hp ?? 1) * diff.enemyHpScale)),
-            speed: Math.max(1, Math.round((overrides.speed ?? cfg.speed ?? 1) * diff.enemySpeedScale)),
-            reward: Math.max(1, Math.round((overrides.reward ?? cfg.reward ?? 1) * diff.rewardScale)),
-        };
+        let next = { ...overrides };
+        if (diff && diff.id !== 'hard' && !overrides.isBoss) {
+            next = {
+                ...next,
+                hp: Math.max(1, Math.round((overrides.hp ?? cfg.hp ?? 1) * diff.enemyHpScale)),
+                speed: Math.max(1, Math.round((overrides.speed ?? cfg.speed ?? 1) * diff.enemySpeedScale)),
+                reward: Math.max(1, Math.round((overrides.reward ?? cfg.reward ?? 1) * diff.rewardScale)),
+            };
+        }
+        if (this.isCoopActive()) {
+            next.hp = Math.max(1, Math.round((next.hp ?? overrides.hp ?? cfg.hp ?? 1) * 2));
+        }
+        return next;
     }
     selectMap(mapId) {
         const preset = getMapPreset(mapId);
@@ -535,7 +572,7 @@ class Game {
     }
     resetMatchState(startInMenu = false) {
         this.enemies = []; this.towers = []; this.projectiles = []; this.skyStrikes = []; this.effects = []; this.floatingTexts = [];
-        this.gold = this.getDifficultyConfig().startGold || CONFIG.START_GOLD; this.lives = CONFIG.START_LIVES; this.currentWave = 0; this.maxWaveReached = 0;
+        this.gold = this.getDifficultyConfig().startGold || CONFIG.START_GOLD; this.playerGold = { p1: this.gold, p2: this.gold }; this.lives = CONFIG.START_LIVES; this.currentWave = 0; this.maxWaveReached = 0;
         this.gameState = startInMenu ? 'menu' : 'countdown';
         this.waveCountdown = CONFIG.FIRST_WAVE_TIMER; this.waveSpawningDone = false;
         this.selectedTowerType = null; this.selectedTower = null; this.selectedTowers = []; this.controlGroups = {}; this.selectedEnemy = null; this.hoveredEnemy = null; this.hoveredTower = null;
@@ -544,22 +581,28 @@ class Game {
         this.initAbilityStates();
         if (this.testModeEnabled) {
             this.gold = 1000000;
+            this.playerGold = { p1: 1000000, p2: 1000000 };
             this.maxWaveReached = CONFIG.TOTAL_WAVES;
         }
-        this.map.resetGrid(); this.resetCameraToMap(); this.waveManager.reset(); this.ui.reset(startInMenu);
+        this.map.resetGrid(); this.resetCameraToMap(); this.waveManager.reset(); this.ui.reset(startInMenu); this.syncVisibleGold();
     }
     enableTestMode() {
         if (!this.devModeAvailable) return;
         this.testModeEnabled = true;
         this.gold = 1000000;
+        this.playerGold = { p1: 1000000, p2: 1000000 };
         this.maxWaveReached = Math.max(this.maxWaveReached, CONFIG.TOTAL_WAVES);
-        this.ui.updateGold(this.gold);
+        this.syncVisibleGold();
         this.ui.updateWave(this.currentWave);
         this.ui.updateTestAccessState?.();
         const center = this.getViewportCenterWorld();
         this.floatingTexts.push(new FloatingText(center.x, this.cameraY + 42, 'TEST MODE: 1 000 000', '#facc15'));
     }
     startMatch(mapId = this.selectedMapId, difficultyId = this.selectedDifficultyId) {
+        if (this.isRemoteViewer()) {
+            this.multiplayer?.sendCommand?.({ type: 'requestStart', mapId, difficultyId });
+            return;
+        }
         this.selectDifficulty(difficultyId);
         this.selectMap(mapId);
         this.resetMatchState(false);
@@ -631,17 +674,23 @@ class Game {
         }
         return bestDistance <= 18 ? best : null;
     }
-    tryPlaceTower(col, row) {
-        if (!this.canPlaceTowerAt(this.selectedTowerType, col, row)) return;
-        const cfg = TOWER_TYPES[this.selectedTowerType];
+    tryPlaceTower(col, row, options = {}) {
+        const towerType = options.towerType || this.selectedTowerType;
+        if (this.isRemoteViewer() && !options.fromNetwork) {
+            this.multiplayer?.sendCommand?.({ type: 'placeTower', towerType, col, row });
+            return;
+        }
+        if (!this.canPlaceTowerAt(towerType, col, row)) return;
+        const cfg = TOWER_TYPES[towerType];
         if (cfg.isFarm) { const fc = this.towers.filter(t => t.isFarm && !t.isDestroyed).length; if (fc >= CONFIG.MAX_FARMS) return; }
-        if (this.gold < cfg.cost) return;
-        this.gold -= cfg.cost;
-        const tower = new Tower(col, row, this.selectedTowerType);
+        const ownerId = options.ownerId || this.getLocalPlayerKey();
+        if (!this.spendPlayerGold(ownerId, cfg.cost)) return;
+        const tower = new Tower(col, row, towerType);
+        tower.ownerId = ownerId;
         this.towers.push(tower);
         this.syncMapOccupancy();
-        this.ui.updateGold(this.gold);
         this.audio.playPlace();
+        this.multiplayer?.notifyLocalAction?.({ type: 'placeTower', towerType, col, row, ownerId });
     }
     getTowerAt(col, row) { return this.towers.find(t => !t.isDestroyed && t.occupiesCell(col, row)); }
     getTowerAtPoint(x, y) {
@@ -933,15 +982,30 @@ class Game {
     giveWaveRewards() {
         const center = this.getViewportCenterWorld();
         const reward = this.getWaveReward();
-        this.gold += reward;
-        this.floatingTexts.push(new FloatingText(center.x, this.cameraY + 30, '+' + reward + ' РАУНД', '#22c55e'));
-        let farmIncome = 0;
-        for (const t of this.towers) { if (t.isFarm && !t.isDestroyed && !t.isBusy() && !t.isDisabled()) farmIncome += t.farmIncome; }
-        if (farmIncome > 0) {
-            this.gold += farmIncome;
-            this.floatingTexts.push(new FloatingText(center.x, this.cameraY + 55, '🌾 +' + farmIncome + ' ФЕРМА', '#fde047'));
+        if (this.isRoomActive()) {
+            this.playerGold.p1 = (this.playerGold.p1 || 0) + reward;
+            this.playerGold.p2 = (this.playerGold.p2 || 0) + reward;
+        } else {
+            this.gold += reward;
+            this.playerGold.p1 = this.gold;
         }
-        this.ui.updateGold(this.gold);
+        this.floatingTexts.push(new FloatingText(center.x, this.cameraY + 30, '+' + reward + ' РАУНД', '#22c55e'));
+        const farmIncomeByPlayer = { p1: 0, p2: 0 };
+        for (const t of this.towers) {
+            if (t.isFarm && !t.isDestroyed && !t.isBusy() && !t.isDisabled()) farmIncomeByPlayer[t.ownerId || 'p1'] = (farmIncomeByPlayer[t.ownerId || 'p1'] || 0) + t.farmIncome;
+        }
+        const totalFarmIncome = Object.values(farmIncomeByPlayer).reduce((sum, value) => sum + value, 0);
+        if (totalFarmIncome > 0) {
+            if (this.isRoomActive()) {
+                this.playerGold.p1 = (this.playerGold.p1 || 0) + (farmIncomeByPlayer.p1 || 0);
+                this.playerGold.p2 = (this.playerGold.p2 || 0) + (farmIncomeByPlayer.p2 || 0);
+            } else {
+                this.gold += totalFarmIncome;
+                this.playerGold.p1 = this.gold;
+            }
+            this.floatingTexts.push(new FloatingText(center.x, this.cameraY + 55, '🌾 +' + totalFarmIncome + ' ФЕРМА', '#fde047'));
+        }
+        this.syncVisibleGold();
     }
     startNextWave() {
         this.currentWave++;
@@ -957,16 +1021,23 @@ class Game {
     }
     skipCountdown() {
         if (this.gameState !== 'countdown') return;
+        if (this.isRemoteViewer()) {
+            this.multiplayer?.sendCommand?.({ type: 'skipCountdown' });
+            return;
+        }
         const bonus = this.getCurrentSkipBonus();
         if (bonus > 0) {
-            this.gold += bonus;
+            this.awardPlayerGold(this.getLocalPlayerKey(), bonus);
             const center = this.getViewportCenterWorld();
             this.floatingTexts.push(new FloatingText(center.x, this.cameraY + 7, '+' + bonus + ' БОНУС', '#a78bfa'));
-            this.ui.updateGold(this.gold);
         }
         this.startNextWave();
     }
     update(dt) {
+        if (this.isRemoteViewer()) {
+            this.updateCamera(dt);
+            return;
+        }
         if (this.isPaused || this.gameState === 'won' || this.gameState === 'lost') return;
         dt = Math.min(dt * this.gameSpeed, 0.1);
         this.updateCamera(dt);
@@ -1048,13 +1119,13 @@ class Game {
                 continue;
             }
             if (e.isDead) {
-                this.gold += e.reward;
+                this.awardPlayerGold(e.lastHitOwnerId || this.getLocalPlayerKey(), e.reward);
                 this.floatingTexts.push(new FloatingText(e.x, e.y - 15, '+' + e.reward, '#d4a017'));
                 this.effects.push(new Effect(e.x, e.y, 'death', e.type));
                 this.audio.playEnemyDeath();
                 if (this.activeBoss === e) this.activeBoss = null;
                 if (this.selectedEnemy === e) { this.selectedEnemy = null; this.ui.hideTowerInfo(); }
-                this.enemies.splice(i, 1); this.ui.updateGold(this.gold); continue;
+                this.enemies.splice(i, 1); this.syncVisibleGold(); continue;
             }
         }
         for (let i = this.skyStrikes.length - 1; i >= 0; i--) {
@@ -1109,6 +1180,7 @@ class Game {
                         const isDirectImpact = p.directHitRadius > 0 ? distance <= p.directHitRadius : e === p.target;
                         const damage = isDirectImpact ? p.getDirectDamageAgainst(e) : p.getSplashDamageAgainst(e, distance);
                         e.takeDamage(damage);
+                        if (damage > 0 && p.sourceTower?.ownerId) e.lastHitOwnerId = p.sourceTower.ownerId;
                         if (p.burnDps > 0 && p.burnDuration > 0 && !e.isDead) e.applyBurn(p.burnDps, p.burnDuration);
                         if (p.sourceTower?.slowFactor < 1) e.applySlow(p.sourceTower.slowFactor, p.sourceTower.slowDuration || 0);
                     }
@@ -1129,12 +1201,14 @@ class Game {
                         }
                         if (directTarget) {
                             directTarget.takeDamage(p.getDirectDamageAgainst(directTarget));
+                            if (p.sourceTower?.ownerId) directTarget.lastHitOwnerId = p.sourceTower.ownerId;
                             if (p.burnDps > 0 && p.burnDuration > 0 && !directTarget.isDead) directTarget.applyBurn(p.burnDps, p.burnDuration);
                             if (p.sourceTower?.slowFactor < 1) directTarget.applySlow(p.sourceTower.slowFactor, p.sourceTower.slowDuration || 0);
                         }
                     }
                     else if (p.target && !p.target.isDead) {
                         p.target.takeDamage(p.getDirectDamageAgainst(p.target));
+                        if (p.sourceTower?.ownerId) p.target.lastHitOwnerId = p.sourceTower.ownerId;
                         if (p.burnDps > 0 && p.burnDuration > 0 && !p.target.isDead) p.target.applyBurn(p.burnDps, p.burnDuration);
                         if (p.sourceTower?.slowFactor < 1) p.target.applySlow(p.sourceTower.slowFactor, p.sourceTower.slowDuration || 0);
                     }
@@ -1146,7 +1220,7 @@ class Game {
                     for (let c = 0; c < p.chainTargets; c++) {
                         let nr = null, nd = 100;
                         for (const e of this.enemies) { if (hit.has(e) || e.isDead) continue; const d = Math.hypot(e.x - src.x, e.y - src.y); if (d < nd) { nr = e; nd = d; } }
-                        if (nr) { nr.takeDamage(p.getDamageAgainst(nr) * 0.55 * Math.pow(0.6, c)); this.effects.push(new Effect(src.x, src.y, 'lightning', null, 0, nr.x, nr.y)); src = { x: nr.x, y: nr.y }; hit.add(nr); } else break;
+                        if (nr) { nr.takeDamage(p.getDamageAgainst(nr) * 0.55 * Math.pow(0.6, c)); if (p.sourceTower?.ownerId) nr.lastHitOwnerId = p.sourceTower.ownerId; this.effects.push(new Effect(src.x, src.y, 'lightning', null, 0, nr.x, nr.y)); src = { x: nr.x, y: nr.y }; hit.add(nr); } else break;
                     }
                 }
                 this.projectiles.splice(i, 1); continue;
@@ -1580,7 +1654,7 @@ class Game {
         const { col, row } = this.hoveredCell;
         const cfg = TOWER_TYPES[this.selectedTowerType];
         const cells = this.getPlacementCells(this.selectedTowerType, col, row);
-        const ok = this.canPlaceTowerAt(this.selectedTowerType, col, row) && this.gold >= cfg.cost;
+        const ok = this.canPlaceTowerAt(this.selectedTowerType, col, row) && this.getDisplayGold() >= cfg.cost;
         let minCol = Infinity, maxCol = -Infinity, minRow = Infinity, maxRow = -Infinity;
         for (const cell of cells) {
             if (cell.col < 0 || cell.col >= this.getGridCols() || cell.row < 0 || cell.row >= this.getGridRows()) continue;
@@ -1606,6 +1680,77 @@ class Game {
         if (rng) {
             ctx.beginPath(); ctx.arc(centerX, centerY, rng, 0, Math.PI * 2);
             ctx.strokeStyle = 'rgba(200,200,200,0.2)'; ctx.lineWidth = 1; ctx.stroke();
+        }
+    }
+    applyRemoteCommand(command) {
+        if (!command || this.isRemoteViewer()) return;
+        if (command.type === 'placeTower') {
+            this.tryPlaceTower(command.col, command.row, {
+                towerType: command.towerType,
+                ownerId: command.playerKey || command.ownerId || 'p2',
+                fromNetwork: true,
+            });
+            return;
+        }
+        if (command.type === 'skipCountdown') {
+            this.skipCountdown();
+            return;
+        }
+        if (command.type === 'requestStart' && this.gameState === 'menu') {
+            this.startMatch(command.mapId || this.selectedMapId, command.difficultyId || this.selectedDifficultyId);
+        }
+    }
+    createSnapshot() {
+        return {
+            version: 1,
+            active: this.gameState !== 'menu',
+            mapId: this.selectedMapId,
+            difficultyId: this.selectedDifficultyId,
+            gameState: this.gameState,
+            lives: this.lives,
+            currentWave: this.currentWave,
+            maxWaveReached: this.maxWaveReached,
+            waveCountdown: this.waveCountdown,
+            waveSpawningDone: this.waveSpawningDone,
+            playerGold: { ...this.playerGold },
+            towers: this.towers.filter(t => !t.isDestroyed).map(t => t.toSnapshot()),
+            enemies: this.enemies.filter(e => !e.isDead && !e.reachedEnd).map(e => e.toSnapshot()),
+        };
+    }
+    applySnapshot(snapshot) {
+        if (!snapshot || !this.isRemoteViewer()) return;
+        if (snapshot.mapId && snapshot.mapId !== this.selectedMapId) this.selectMap(snapshot.mapId);
+        this.selectedDifficultyId = snapshot.difficultyId || this.selectedDifficultyId;
+        this.gameState = snapshot.gameState || this.gameState;
+        this.lives = snapshot.lives ?? this.lives;
+        this.currentWave = snapshot.currentWave ?? this.currentWave;
+        this.maxWaveReached = snapshot.maxWaveReached ?? this.maxWaveReached;
+        this.waveCountdown = snapshot.waveCountdown ?? this.waveCountdown;
+        this.waveSpawningDone = !!snapshot.waveSpawningDone;
+        this.playerGold = { p1: 0, p2: 0, ...(snapshot.playerGold || {}) };
+        this.towers = (snapshot.towers || []).map(data => new Tower(data.col, data.row, data.type).applySnapshot(data));
+        this.enemies = (snapshot.enemies || []).map(data => new Enemy(data.type, this.map, {
+            hp: data.maxHp,
+            speed: data.baseSpeed,
+            reward: data.reward,
+            isBoss: data.isBoss,
+            bossStage: data.bossStage,
+            bossPersona: data.bossPersona,
+        }).applySnapshot(data));
+        this.projectiles = [];
+        this.syncMapOccupancy();
+        this.ui.updateLives(this.lives);
+        this.ui.updateWave(this.currentWave);
+        this.syncVisibleGold();
+        this.ui.updateTowerButtons();
+        if (snapshot.active) this.ui.hideStartScreen();
+    }
+    applyCoopHpBoostToAliveEnemies() {
+        for (const enemy of this.enemies) {
+            if (enemy.isDead || enemy.reachedEnd || enemy.coopBoosted) continue;
+            enemy.maxHp = Math.max(1, Math.round(enemy.maxHp * 2));
+            enemy.hp = Math.max(1, Math.round(enemy.hp * 2));
+            enemy.coopBoosted = true;
         }
     }
     gameLoop(ts) { const dt = Math.min((ts - this.lastTime) / 1000, 0.1); this.lastTime = ts; this.update(dt); this.render(); requestAnimationFrame((t) => this.gameLoop(t)); }

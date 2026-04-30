@@ -90,6 +90,10 @@ const I18N = (() => {
         'Пожиратель Колонн': 'Column Devourer',
         'Костяной Глушитель': 'Bone Silencer',
         'Последний Титан': 'Last Titan',
+        'Solo mode. Start a room to play together.': 'Solo mode. Start a room to play together.',
+        'CREATE ROOM': 'CREATE ROOM',
+        'JOIN': 'JOIN',
+        'ROOM CODE': 'ROOM CODE',
     };
 
     const phrase = [
