@@ -1,5 +1,6 @@
 class MultiplayerClient {
     constructor(game) {
+        this.defaultServerUrl = 'https://tower-defense-multiplayer-3gxn.onrender.com';
         this.game = game;
         this.roomCode = '';
         this.playerId = '';
@@ -25,7 +26,7 @@ class MultiplayerClient {
         });
     }
     get serverUrl() {
-        return (this.serverInput?.value || 'http://localhost:8787').replace(/\/+$/, '');
+        return (this.serverInput?.value || this.defaultServerUrl).replace(/\/+$/, '');
     }
     isRoomActive() { return !!this.roomCode && !!this.playerId; }
     isCoopActive() { return this.isRoomActive() && this.playerCount >= 2; }
