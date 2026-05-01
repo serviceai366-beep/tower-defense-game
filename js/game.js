@@ -700,7 +700,8 @@ class Game {
         tower.vehicleBuildDuration = tower.vehicleBuildTime;
         tower.vehicleBuildTimer = tower.vehicleBuildTime;
         tower.vehicleBuildOwnerId = ownerId;
-        this.floatingTexts.push(new FloatingText(tower.x, tower.y - 28, 'СБОРКА МАШИНЫ', '#facc15'));
+        this.spawnFactoryVehicle(tower);
+        this.floatingTexts.push(new FloatingText(tower.x, tower.y - 28, 'МАШИНА ЗАПУЩЕНА', '#facc15'));
         this.multiplayer?.publishSnapshot?.();
         return true;
     }
@@ -720,10 +721,7 @@ class Game {
         for (const tower of this.towers) {
             if (!tower.isFactory || tower.isDestroyed || tower.vehicleBuildTimer <= 0) continue;
             tower.vehicleBuildTimer = Math.max(0, tower.vehicleBuildTimer - dt);
-            if (tower.vehicleBuildTimer <= 0) {
-                tower.vehicleBuildDuration = 0;
-                this.spawnFactoryVehicle(tower);
-            }
+            if (tower.vehicleBuildTimer <= 0) tower.vehicleBuildDuration = 0;
         }
     }
     updateSupportBuffs() {
@@ -905,6 +903,9 @@ class Game {
         this.towers.push(tower);
         this.syncMapOccupancy();
         this.audio.playPlace();
+        if (!this.isRoomActive() || ownerId === this.getLocalPlayerKey()) {
+            this.selectSingleTower(tower, true);
+        }
         this.multiplayer?.notifyLocalAction?.({ type: 'placeTower', towerType, col, row, ownerId });
     }
     getTowerAt(col, row) { return this.towers.find(t => !t.isDestroyed && t.occupiesCell(col, row)); }
