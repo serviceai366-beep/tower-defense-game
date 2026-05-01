@@ -98,3 +98,265 @@ const I18N = (() => {
         'LEAVE': 'LEAVE',
         'SEND': 'SEND',
         'ROOM CHAT': 'ROOM CHAT',
+        'ROOM CODE': 'ROOM CODE',
+        'Ждем, пока ваш партнер сделает выбор': 'Waiting for your partner to choose',
+        '⏳ ЖДЕМ ГЛАВНОГО ИГРОКА': '⏳ WAITING FOR HOST',
+        '⎋ ВЫЙТИ': '⎋ LEAVE',
+        'CO-OP ЗАВЕРШЕН': 'CO-OP ENDED',
+        'Игрок вышел, поэтому игра закончена': 'A player left, so the game ended',
+        'СБОРКА МАШИНЫ': 'VEHICLE ASSEMBLY',
+        'БРОНЕМАШИНА': 'ARMORED CAR',
+        'ТАРАН': 'RAM',
+    };
+
+    const phrase = [
+        ['Лёгкий вход', 'Easy Start'],
+        ['Сбалансировано', 'Balanced'],
+        ['Оригинальный режим', 'Original Mode'],
+        ['Меньше врагов, медленнее темп, слабее боссы. Подходит для спокойного изучения карт и башен.', 'Fewer enemies, slower pacing, weaker bosses. Good for learning maps and towers.'],
+        ['Умеренный темп и чуть мягче волны. Ошибки всё ещё опасны, но игра даёт больше пространства.', 'Moderate pacing and softer waves. Mistakes still matter, but you get more room to recover.'],
+        ['Текущий полный баланс: максимальный темп, плотные волны и самые жёсткие боссы.', 'The original full balance: maximum pace, dense waves, and the toughest bosses.'],
+        ['Режим:', 'Mode:'],
+        ['Старт:', 'Start:'],
+        ['золота', 'gold'],
+        ['клеток', 'cells'],
+        ['поворотов', 'turns'],
+        ['клеток пути', 'path cells'],
+        ['База:', 'Base:'],
+        ['Камера + миникарта', 'Camera + minimap'],
+        ['▶ НАЧАТЬ:', '▶ START:'],
+        ['Железный Перекрёсток', 'Iron Crossroads'],
+        ['Ледяной Лабиринт', 'Glacial Labyrinth'],
+        ['Песчаный Зигзаг', 'Dune Switchback'],
+        ['Заросшая Чаша', 'Overgrowth Basin'],
+        ['Угольный Разлом', 'Ember Rift'],
+        ['Фронтир Конвоя', 'Frontier Convoy'],
+        ['Пепельная Магистраль', 'Ashen Megaforge'],
+        ['Военный лес', 'Military Forest'],
+        ['Замёрзший фронт', 'Frozen Front'],
+        ['Дюны и пыль', 'Dunes and Dust'],
+        ['Болото и руины', 'Swamp and Ruins'],
+        ['Вулканический каньон', 'Volcanic Canyon'],
+        ['Огромная карта', 'Huge Map'],
+        ['Старая военная трасса с грязевыми развязками и длинными прямыми для дальнобойных турелей.', 'An old military road with muddy interchanges and long lanes for long-range turrets.'],
+        ['Холодный серпантин среди льда. Узкие карманы хорошо подходят под контроль и замедление.', 'A cold ice switchback. Narrow pockets work well for control and slow effects.'],
+        ['Длинные пустынные колена с хорошими позициями под splash и тяжёлую оборону.', 'Long desert bends with strong positions for splash damage and heavy defense.'],
+        ['Маршрут через влажные заросли и руины. Много плотных зон для засад и лечения.', 'A route through wet overgrowth and ruins, with dense areas for ambushes and repairs.'],
+        ['Тёмный базальт, трещины и лава. Опасная карта с резкими сменами вертикали и длинными линиями.', 'Dark basalt, cracks, and lava. A dangerous map with sharp vertical shifts and long sightlines.'],
+        ['Экспедиционная мегакарта с очень длинной дорогой. Нужны камера, миникарта и контроль нескольких зон.', 'An expedition-scale map with a very long road. Camera, minimap, and multi-zone control are required.'],
+        ['Широкий раскалённый маршрут через разломы и индустриальные зоны. Очень длинный путь и несколько глухих участков.', 'A wide heated route through rifts and industrial zones, with a very long path and several dead zones.'],
+        ['Бегун', 'Runner'],
+        ['Зомби', 'Zombie'],
+        ['Призрак', 'Ghost'],
+        ['Мираж', 'Shade'],
+        ['Теневик', 'Stalker'],
+        ['Бронированный', 'Armored'],
+        ['Толстяк', 'Tank'],
+        ['Разрушитель', 'Destroyer'],
+        ['Некромант', 'Necromancer'],
+        ['Босс', 'Boss'],
+        ['Альфа-Бегун', 'Alpha Runner'],
+        ['Вожак Орды', 'Horde Warlord'],
+        ['Фантом-Лорд', 'Phantom Lord'],
+        ['Повелитель Миражей', 'Mirage Lord'],
+        ['Теневой Палач', 'Shadow Executioner'],
+        ['Стальной Колосс', 'Steel Colossus'],
+        ['Громила-Титан', 'Titan Brute'],
+        ['Осадный Титан', 'Siege Titan'],
+        ['Архи-Некромант', 'Arch Necromancer'],
+        ['Лёгкая стена', 'Light Wall'],
+        ['Средняя стена', 'Medium Wall'],
+        ['Производит бронемашины, которые выезжают из базы и таранят врагов на дороге', 'Builds armored cars that leave the base and ram enemies on the road'],
+        ['Усиливает все постройки в радиусе: урон, HP, дальность и доход', 'Boosts all buildings in range: damage, HP, range, and income'],
+        ['Система: сборочный цех, бронеплатформа и выездной шлюз к базовой дороге.', 'System: assembly bay, armored platform, and launch gate to the base road.'],
+        ['Система: двухклеточный микшер, усилители поля и ритм-модуль поддержки.', 'System: two-cell mixer, field amplifiers, and rhythm support module.'],
+        ['Система: сборочный цех, бронеплатформа и выезд машин с базы.', 'System: assembly bay, armored platform, and vehicle launch from the base.'],
+        ['Система: двухклеточный микшер, усилители поля и пассивный баф союзных построек.', 'System: two-cell mixer, field amplifiers, and passive building buffs.'],
+        ['Производство:', 'Production:'],
+        ['идёт', 'running'],
+        ['готово', 'ready'],
+        ['Машина:', 'Vehicle:'],
+        ['Цена машины:', 'Vehicle cost:'],
+        ['Сборка:', 'Build time:'],
+        ['Усиление:', 'Boost:'],
+        ['Радиус:', 'Radius:'],
+        ['Эффект:', 'Effect:'],
+        ['урон, HP, дальность, доход', 'damage, HP, range, income'],
+        ['DJ-БАФ АКТИВЕН', 'DJ BUFF ACTIVE'],
+        ['Все ключевые параметры усилены на', 'All key stats are boosted by'],
+        ['ПРОИЗВОДСТВО', 'PRODUCTION'],
+        ['До выезда:', 'Launch in:'],
+        ['Бронемашина едет от базы навстречу волне и таранит врагов.', 'The armored car drives from the base into the wave and rams enemies.'],
+        ['КУПИТЬ МАШИНУ', 'BUY VEHICLE'],
+        ['Тяжёлая стена', 'Heavy Wall'],
+        ['Ядерная шахта', 'Nuke Silo'],
+        ['Малая ракета', 'Small Missile'],
+        ['Стратегическая', 'Strategic'],
+        ['Царь-бомба', 'Tsar Bomb'],
+        ['Апокалипсис', 'Apocalypse'],
+        ['Неон Штурм', 'Neon Assault'],
+        ['Железный Марш', 'Iron March'],
+        ['Ледяная Ночь', 'Frozen Night'],
+        ['СТРОЙКА', 'BUILD'],
+        ['БАРЬЕРЫ', 'BARRIERS'],
+        ['ТУРЕЛИ', 'TURRETS'],
+        ['СЛЕД. ВОЛНА:', 'NEXT WAVE:'],
+        ['БОНУС:', 'BONUS:'],
+        ['В.', 'W.'],
+        ['тёмная', 'dark'],
+        ['динамика', 'dynamic'],
+        ['давление', 'pressure'],
+        ['атмосфера', 'atmosphere'],
+        ['Прокачка', 'Upgrade'],
+        ['строительство', 'construction'],
+        ['группа / выбранная башня', 'group / selected tower'],
+        ['Клавиши возвращены по умолчанию.', 'Hotkeys restored to defaults.'],
+        ['Переназначение отменено.', 'Rebinding cancelled.'],
+        ['Эту клавишу нельзя назначить. Используй буквы, цифры или основные символы.', 'This key cannot be assigned. Use letters, numbers, or basic symbols.'],
+        ['уже занята:', 'is already assigned to:'],
+        ['Назначено:', 'Assigned:'],
+        ['Нажми новую клавишу для:', 'Press a new key for:'],
+        ['Esc — отмена.', 'Esc cancels.'],
+        ['Цель:', 'Target:'],
+        ['Первый', 'First'],
+        ['Последний', 'Last'],
+        ['Сильный', 'Strong'],
+        ['Ближний', 'Close'],
+        ['Все', 'All'],
+        ['волн пережиты!', 'waves survived!'],
+        ['Зомби прорвались к базе...', 'Zombies broke through to the base...'],
+        ['МИНИКАРТА', 'MINIMAP'],
+        ['ЛКМ - прыжок · тащи рамку · M', 'LMB - jump · drag frame · M'],
+        ['ПОЛНАЯ КАРТА', 'FULL MAP'],
+        ['ПКМ/клик вне карты - закрыть · клик по карте - перейти', 'RMB/click outside closes · click map to jump'],
+        ['TEST MODE', 'TEST MODE'],
+        ['ВЫБРАНО', 'SELECTED'],
+        ['ГРУППА', 'GROUP'],
+        ['ДОБАВЛЕНО В', 'ADDED TO'],
+        ['АПГРЕЙД', 'UPGRADE'],
+    ];
+
+    function translatePatterns(text) {
+        return text
+            .replace(/(\d+(?:[.,]\d+)?)с\b/g, '$1s')
+            .replace(/(\d+(?:[.,]\d+)?)С\b/g, '$1S')
+            .replace(/Ур\.(\d+)/g, 'Lv.$1')
+            .replace(/(\d+)\s*шт\b/g, '$1 pcs')
+            .replace(/(\d+)\s*см\b/g, '$1 cm')
+            .replace(/(\d+)\s*кг\b/g, '$1 kg')
+            .replace(/Волна\s+(\d+)/g, 'Wave $1')
+            .replace(/ВОЛНА\s+(\d+)/g, 'WAVE $1')
+            .replace(/x(\d+)/g, 'x$1');
+    }
+
+    function toEnglish(text) {
+        if (!text || !/[А-Яа-яЁё]/.test(text)) return text;
+        let out = exact[text.trim()] || text;
+        for (const [from, to] of phrase) out = out.split(from).join(to);
+        return translatePatterns(out);
+    }
+
+    function translate(text) {
+        return currentLang === 'ru' ? text : toEnglish(text);
+    }
+
+    function translateTextNode(node) {
+        if (!node.nodeValue || !node.nodeValue.trim()) return;
+        const previousOriginal = originalText.get(node);
+        const current = node.nodeValue;
+        if (previousOriginal && current === toEnglish(previousOriginal) && currentLang === 'en') return;
+        const source = previousOriginal && (current === previousOriginal || current === toEnglish(previousOriginal))
+            ? previousOriginal
+            : current;
+        originalText.set(node, source);
+        const next = currentLang === 'ru' ? source : toEnglish(source);
+        if (node.nodeValue !== next) node.nodeValue = next;
+    }
+
+    function translateAttributes(el) {
+        const attrs = ['title', 'aria-label', 'placeholder', 'content'];
+        for (const attr of attrs) {
+            if (!el.hasAttribute?.(attr)) continue;
+            const key = `${attr}:${el.tagName}`;
+            const map = originalAttrs.get(el) || {};
+            const current = el.getAttribute(attr);
+            if (!map[key] || (current !== map[key] && current !== toEnglish(map[key]))) map[key] = current;
+            originalAttrs.set(el, map);
+            const next = currentLang === 'ru' ? map[key] : toEnglish(map[key]);
+            if (current !== next) el.setAttribute(attr, next);
+        }
+    }
+
+    function walk(root) {
+        if (!root) return;
+        if (root.nodeType === Node.TEXT_NODE) {
+            translateTextNode(root);
+            return;
+        }
+        if (root.nodeType !== Node.ELEMENT_NODE && root.nodeType !== Node.DOCUMENT_NODE) return;
+        if (root.matches?.('script, style, textarea')) return;
+        if (root.nodeType === Node.ELEMENT_NODE) translateAttributes(root);
+        for (const node of root.childNodes) walk(node);
+    }
+
+    function apply(lang = currentLang) {
+        currentLang = lang === 'ru' ? 'ru' : 'en';
+        applying = true;
+        document.documentElement.lang = currentLang;
+        document.title = currentLang === 'ru' ? 'Tower Defense: Зомби-Апокалипсис' : 'Tower Defense: Zombie Apocalypse';
+        walk(document.body);
+        document.querySelectorAll('meta[name="description"], meta[property="og:title"], meta[property="og:description"]').forEach(translateAttributes);
+        document.querySelectorAll('.language-switch').forEach(btn => {
+            btn.textContent = currentLang === 'ru' ? 'EN' : 'RU';
+            btn.title = currentLang === 'ru' ? 'Switch to English' : 'Переключить на русский';
+            btn.setAttribute('aria-label', btn.title);
+        });
+        try { window.localStorage.setItem(I18N_STORAGE_KEY, currentLang); } catch (_) {}
+        applying = false;
+    }
+
+    function toggle() {
+        apply(currentLang === 'ru' ? 'en' : 'ru');
+    }
+
+    function patchCanvasText() {
+        if (!window.CanvasRenderingContext2D?.prototype) return;
+        const proto = window.CanvasRenderingContext2D.prototype;
+        if (proto.__tdI18nPatched) return;
+        const fillText = proto.fillText;
+        const strokeText = proto.strokeText;
+        proto.fillText = function(text, ...args) {
+            return fillText.call(this, typeof text === 'string' ? translate(text) : text, ...args);
+        };
+        proto.strokeText = function(text, ...args) {
+            return strokeText.call(this, typeof text === 'string' ? translate(text) : text, ...args);
+        };
+        proto.__tdI18nPatched = true;
+    }
+
+    function init() {
+        try { currentLang = window.localStorage.getItem(I18N_STORAGE_KEY) || 'en'; } catch (_) { currentLang = 'en'; }
+        if (currentLang !== 'ru') currentLang = 'en';
+        patchCanvasText();
+        document.addEventListener('click', (e) => {
+            if (e.target?.closest?.('.language-switch')) toggle();
+        });
+        const observer = new MutationObserver((mutations) => {
+            if (applying) return;
+            applying = true;
+            for (const mutation of mutations) {
+                if (mutation.type === 'characterData') translateTextNode(mutation.target);
+                for (const node of mutation.addedNodes) walk(node);
+                if (mutation.type === 'attributes') translateAttributes(mutation.target);
+            }
+            applying = false;
+        });
+        observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['title', 'aria-label', 'placeholder', 'content'] });
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => apply(currentLang));
+        else apply(currentLang);
+    }
+
+    init();
+
+    return { apply, toggle, translate, get lang() { return currentLang; } };
+})();
