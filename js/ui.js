@@ -267,6 +267,32 @@ class UI {
         this.hideTowerTooltip();
         return true;
     }
+    canUseHostOnlyMenu() {
+        return !this.game.isRemoteViewer();
+    }
+    applyMultiplayerRoleState() {
+        const guest = this.game.isRemoteViewer();
+        const waitingText = 'Ждем, пока ваш партнер сделает выбор';
+        this.modeSelectBtn?.toggleAttribute('disabled', guest);
+        this.continueMapSelectBtn?.toggleAttribute('disabled', guest);
+        this.startMapBtn?.toggleAttribute('disabled', guest);
+        this.skipBtn?.toggleAttribute('disabled', guest);
+        this.skipBtn?.classList.toggle('coop-disabled', guest);
+        this.difficultyGrid?.querySelectorAll('.difficulty-card').forEach(card => {
+            card.toggleAttribute('disabled', guest);
+            card.classList.toggle('coop-locked', guest);
+        });
+        this.mapCardGrid?.querySelectorAll('.map-card').forEach(card => {
+            card.toggleAttribute('disabled', guest);
+            card.classList.toggle('coop-locked', guest);
+        });
+        if (guest) {
+            if (this.startMapBtn) this.startMapBtn.textContent = waitingText;
+            if (this.modeSelectBtn) this.modeSelectBtn.textContent = '⏳ ЖДЕМ ГЛАВНОГО ИГРОКА';
+        } else if (this.modeSelectBtn) {
+            this.modeSelectBtn.textContent = '▶ ВЫБРАТЬ РЕЖИМ';
+        }
+    }
     getUnitClassName(unitClass, singular = false) {
         const labels = singular
             ? { light: 'Лёгкий', medium: 'Средний', heavy: 'Тяжёлый' }
@@ -475,8 +501,8 @@ class UI {
         this.overlayBtn.addEventListener('click', () => this.game.restart());
         this.settingsFab?.addEventListener('click', () => this.toggleSettingsPanel());
         this.mainSettingsBtn?.addEventListener('click', () => this.toggleSettingsPanel());
-        this.modeSelectBtn?.addEventListener('click', () => this.showDifficultyPanel());
-        this.continueMapSelectBtn?.addEventListener('click', () => this.showMapSelectView());
+        this.modeSelectBtn?.addEventListener('click', () => { if (this.canUseHostOnlyMenu()) this.showDifficultyPanel(); });
+        this.continueMapSelectBtn?.addEventListener('click', () => { if (this.canUseHostOnlyMenu()) this.showMapSelectView(); });
         this.backMainMenuBtn?.addEventListener('click', () => this.showMainMenuView());
         this.testAccessBtn?.addEventListener('click', () => this.handleTestAccess());
         this.settingsCloseBtn?.addEventListener('click', () => this.hideSettingsPanel());
@@ -489,10 +515,10 @@ class UI {
             this.game.resetMatchState(true);
         });
         this.hotkeyResetBtn?.addEventListener('click', () => this.resetHotkeysToDefault());
-        this.startMapBtn?.addEventListener('click', () => this.game.startMatch(this.game.selectedMapId, this.game.selectedDifficultyId));
+        this.startMapBtn?.addEventListener('click', () => { if (this.canUseHostOnlyMenu()) this.game.startMatch(this.game.selectedMapId, this.game.selectedDifficultyId); });
         this.mapCardGrid?.addEventListener('click', (e) => {
             const card = e.target.closest('.map-card');
-            if (!card) return;
+            if (!card || !this.canUseHostOnlyMenu()) return;
             this.game.selectMap(card.dataset.mapId);
             this.refreshMapSelection();
         });
@@ -629,11 +655,13 @@ class UI {
         `).join('');
         this.difficultyGrid.querySelectorAll('.difficulty-card').forEach(card => {
             this.bindActionPress(card, () => {
+                if (!this.canUseHostOnlyMenu()) return;
                 this.game.selectDifficulty(card.dataset.difficultyId);
                 this.refreshDifficultySelection();
             });
         });
         this.refreshDifficultySelection();
+        this.applyMultiplayerRoleState();
     }
     refreshDifficultySelection() {
         const diff = this.game.getDifficultyConfig();
@@ -651,6 +679,7 @@ class UI {
             const map = getMapPreset(this.game.selectedMapId);
             this.startMapBtn.textContent = `▶ НАЧАТЬ: ${map.name.toUpperCase()} · ${diff.name.toUpperCase()}`;
         }
+        this.applyMultiplayerRoleState();
     }
     showDifficultyPanel() {
         this.difficultyPanel?.classList.add('visible');
@@ -680,6 +709,7 @@ class UI {
                 </div>
             </button>
         `).join('');
+        this.applyMultiplayerRoleState();
     }
     refreshMapSelection() {
         const map = getMapPreset(this.game.selectedMapId);
@@ -708,6 +738,7 @@ class UI {
         this.hideSettingsPanel();
         this.showMainMenuView();
         this.refreshMapSelection();
+        this.applyMultiplayerRoleState();
         if (this.startScreen) this.startScreen.style.display = 'flex';
         this.bodyEl.classList.add('menu-open');
     }
@@ -736,7 +767,7 @@ class UI {
         }
     }
     buildTowerInfoKey(tower) {
-        const farmCount = tower.isFarm ? this.game.towers.filter(t => t.isFarm && !t.isDestroyed).length : 0;
+        const farmCount = tower.isFarm ? this.game.getFarmCountForPlayer(tower.ownerId || 'p1') : 0;
         return [
             tower.type, tower.level, Math.round(tower.hp), tower.maxHp, tower.damage, tower.range, tower.fireRate,
             tower.scanRadius, tower.invisibleDetectionLevel, tower.healRadius, tower.healRate, tower.farmIncome, tower.targetMode,
@@ -750,7 +781,7 @@ class UI {
             Math.ceil(tower.getRemainingWorkTime()),
             tower.canUpgrade() ? tower.getUpgradeCost() : -1,
             tower.canUpgrade() ? tower.getUpgradeTime() : -1,
-            tower.getSellValue(), this.game.gold, farmCount
+            tower.getSellValue(), this.game.getDisplayGold(), farmCount, tower.ownerId || 'p1'
         ].join('|');
     }
     buildEnemyInfoKey(enemy) {
@@ -764,11 +795,12 @@ class UI {
     }
     deselectAllTowerButtons() { this.towerButtons.forEach(b => b.classList.remove('selected')); }
     updateTowerButtons() {
+        const displayGold = this.game.getDisplayGold();
         this.towerButtons.forEach(btn => {
             const type = btn.dataset.type, cfg = TOWER_TYPES[type], unlocked = this.game.isTowerUnlocked(type);
             const hotkey = this.getBuildHotkey(type);
             btn.classList.toggle('locked', !unlocked);
-            btn.classList.toggle('cant-afford', unlocked && this.game.gold < cfg.cost);
+            btn.classList.toggle('cant-afford', unlocked && displayGold < cfg.cost);
             if (hotkey) btn.dataset.hotkey = this.hotkeyLabel(hotkey);
             else delete btn.dataset.hotkey;
             btn.title = hotkey ? `Клавиша: ${this.hotkeyLabel(hotkey)}` : '';
@@ -823,15 +855,23 @@ class UI {
         this.livesEl.style.color = v <= dangerThreshold ? '#ef4444' : v <= warningThreshold ? '#f59e0b' : '#22c55e';
     }
     updateWave(v) { this.waveEl.textContent = v + ' / ' + CONFIG.TOTAL_WAVES; }
-    showCountdownState() { this.timerPanel.style.display = ''; this.waveStatus.style.display = 'none'; this.skipBtn.style.display = ''; }
-    showWaveActive(wave) { this.timerPanel.style.display = 'none'; this.waveStatus.style.display = ''; this.waveStatus.textContent = '\u2694 \u0412\u041e\u041b\u041d\u0410 ' + wave + ' \u2014 \u0411\u041e\u0419...'; this.skipBtn.style.display = 'none'; }
+    showCountdownState() { this.timerPanel.style.display = ''; this.waveStatus.style.display = 'none'; this.skipBtn.style.display = ''; this.applyMultiplayerRoleState(); }
+    showWaveActive(wave) {
+        const text = '\u2694 \u0412\u041e\u041b\u041d\u0410 ' + wave + ' \u2014 \u0411\u041e\u0419...';
+        if (this.timerPanel.style.display !== 'none') this.timerPanel.style.display = 'none';
+        if (this.waveStatus.style.display === 'none') this.waveStatus.style.display = '';
+        if (this.waveStatus.textContent !== text) this.waveStatus.textContent = text;
+        if (this.skipBtn.style.display !== 'none') this.skipBtn.style.display = 'none';
+    }
     updateCountdown(time, bonus) {
-        this.showCountdownState();
+        if (this.timerPanel.style.display === 'none' || this.waveStatus.style.display !== 'none') this.showCountdownState();
         const secs = Math.ceil(time);
-        this.timerValue.textContent = secs + 'с';
+        const secText = secs + 'с';
+        if (this.timerValue.textContent !== secText) this.timerValue.textContent = secText;
         const max = this.game.currentWave === 0 ? CONFIG.FIRST_WAVE_TIMER : CONFIG.WAVE_TIMER;
         this.timerBar.style.width = Math.max(0, (time / max) * 100) + '%';
-        this.bonusValue.textContent = bonus;
+        const bonusText = String(bonus);
+        if (this.bonusValue.textContent !== bonusText) this.bonusValue.textContent = bonusText;
     }
     getTowerDetailText(tower) {
         const detailMap = {
@@ -1058,14 +1098,20 @@ class UI {
         this.siloSelectTactical.classList.toggle('active', tower.selectedPayload === 'tactical');
         this.siloSelectStrategic.classList.toggle('active', tower.selectedPayload === 'strategic');
         this.siloSelectTsar.classList.toggle('active', tower.selectedPayload === 'tsar');
+        const canControl = this.game.canControlTower(tower);
+        const displayGold = this.game.getDisplayGold();
         this.siloBuyTactical.textContent = `КУПИТЬ МАЛУЮ · ${NUCLEAR_PAYLOADS.tactical.cost}💰`;
         this.siloBuyStrategic.textContent = `КУПИТЬ СТРАТ · ${NUCLEAR_PAYLOADS.strategic.cost}💰`;
         this.siloBuyTsar.textContent = `КУПИТЬ ЦАРЬ · ${NUCLEAR_PAYLOADS.tsar.cost}💰`;
-        this.siloBuyTactical.disabled = this.game.gold < NUCLEAR_PAYLOADS.tactical.cost;
-        this.siloBuyStrategic.disabled = this.game.gold < NUCLEAR_PAYLOADS.strategic.cost;
-        this.siloBuyTsar.disabled = this.game.gold < NUCLEAR_PAYLOADS.tsar.cost;
+        this.siloSelectTactical.disabled = !canControl;
+        this.siloSelectStrategic.disabled = !canControl;
+        this.siloSelectTsar.disabled = !canControl;
+        this.siloBuyTactical.disabled = !canControl || displayGold < NUCLEAR_PAYLOADS.tactical.cost;
+        this.siloBuyStrategic.disabled = !canControl || displayGold < NUCLEAR_PAYLOADS.strategic.cost;
+        this.siloBuyTsar.disabled = !canControl || displayGold < NUCLEAR_PAYLOADS.tsar.cost;
         this.siloInfoBtn.textContent = this.infoMode === 'tower' && this.towerInfoPanel.style.display !== 'none' ? 'ЗАКРЫТЬ ИНФО' : 'ИНФО';
         this.siloSellBtn.textContent = `ПРОДАТЬ · ${tower.getSellValue()}💰`;
+        this.siloSellBtn.disabled = !canControl;
         this.siloHud.classList.add('visible');
         this.siloHud.setAttribute('aria-hidden', 'false');
         this.positionSiloHud(tower, areaW, areaH);
@@ -1074,7 +1120,7 @@ class UI {
         const selection = this.game.getSelectedTowerGroup?.() || [];
         const towers = selection.length ? selection : (this.game.selectedTower ? [this.game.selectedTower] : []);
         return towers
-            .filter(tower => tower && !tower.isDestroyed && !tower.isNukeSilo && !tower.isBusy() && tower.canUpgrade())
+            .filter(tower => tower && this.game.canControlTower(tower) && !tower.isNukeSilo && !tower.isBusy() && tower.canUpgrade())
             .sort((a, b) => {
                 const costDiff = a.getUpgradeCost() - b.getUpgradeCost();
                 if (costDiff !== 0) return costDiff;
@@ -1099,6 +1145,8 @@ class UI {
         const selectionCount = this.game.getSelectedTowerGroup?.().length || 1;
         const upgradeCandidates = this.getUpgradeableTowerCandidates();
         const nextUpgradeTower = upgradeCandidates[0] || null;
+        const canControl = this.game.canControlTower(tower);
+        const displayGold = this.game.getDisplayGold();
         if (tower.isNukeSilo && selectionCount <= 1) {
             this.hideActionHud();
             this.updateSiloHud(tower, areaW, areaH);
@@ -1109,13 +1157,13 @@ class UI {
             const upgradeCost = nextUpgradeTower.getUpgradeCost();
             const suffix = selectionCount > 1 ? ` · x${upgradeCandidates.length}` : '';
             this.hudUpgradeBtn.textContent = `⬆ ${upgradeCost}💰${suffix}`;
-            this.hudUpgradeBtn.disabled = this.game.gold < upgradeCost;
+            this.hudUpgradeBtn.disabled = !canControl || displayGold < upgradeCost;
         } else {
             this.hudUpgradeBtn.textContent = '◆ MAX';
             this.hudUpgradeBtn.disabled = true;
         }
         this.hudSellBtn.textContent = `💰 ${tower.getSellValue()}`;
-        this.hudSellBtn.disabled = false;
+        this.hudSellBtn.disabled = !canControl;
         const infoOpen = this.infoMode === 'tower' && this.towerInfoPanel.style.display !== 'none';
         this.hudInfoBtn.textContent = infoOpen ? '✕ ИНФО' : 'ℹ ИНФО';
         this.hudInfoBtn.disabled = false;
@@ -1168,28 +1216,27 @@ class UI {
     cycleSiloPayload(step = 1) {
         const tower = this.game.selectedTower;
         if (!tower || tower.isDestroyed || !tower.isNukeSilo) return;
-        tower.cyclePayload(step);
+        const kinds = Object.keys(NUCLEAR_PAYLOADS);
+        const index = kinds.indexOf(tower.selectedPayload);
+        const nextKind = kinds[(index + step + kinds.length) % kinds.length];
+        if (!this.game.selectTowerPayload(tower, nextKind)) return;
         this.updateActionHud();
         if (this.infoMode === 'tower' && this.towerInfoPanel.style.display !== 'none') this.showTowerInfo(tower);
     }
     selectSiloPayload(kind) {
         const tower = this.game.selectedTower;
         if (!tower || tower.isDestroyed || !tower.isNukeSilo) return;
-        tower.selectPayload(kind);
+        if (!this.game.selectTowerPayload(tower, kind)) return;
         this.updateActionHud();
         if (this.infoMode === 'tower') this.showTowerInfo(tower);
     }
     buySiloPayload(kind) {
         const tower = this.game.selectedTower;
         if (!tower || tower.isDestroyed || !tower.isNukeSilo) return;
-        const payload = NUCLEAR_PAYLOADS[kind];
-        if (!payload || this.game.gold < payload.cost) return;
-        this.game.gold -= payload.cost;
-        tower.addPayload(kind);
-        this.updateGold(this.game.gold);
+        if (!this.game.buyTowerPayload(tower, kind)) return;
+        this.updateGold(this.game.getDisplayGold());
         this.updateActionHud();
         if (this.infoMode === 'tower' && this.towerInfoPanel.style.display !== 'none') this.showTowerInfo(tower);
-        if (this.game.audio) this.game.audio.playNukeLoad(kind);
     }
     upgradeSelectedTower() {
         const tower = this.game.selectedTower;
@@ -1200,11 +1247,8 @@ class UI {
         }
         const upgradeTower = this.getUpgradeableTowerCandidates()[0] || null;
         if (!upgradeTower) return;
-        const cost = upgradeTower.getUpgradeCost();
-        if (this.game.gold < cost) return;
-        this.game.gold -= cost;
-        upgradeTower.upgrade();
-        this.updateGold(this.game.gold);
+        if (!this.game.upgradeTower(upgradeTower)) return;
+        this.updateGold(this.game.getDisplayGold());
         if (this.infoMode === 'tower' && tower === upgradeTower) this.showTowerInfo(tower);
         if ((this.game.getSelectedTowerGroup?.().length || 1) > 1) {
             this.game.floatingTexts.push(new FloatingText(upgradeTower.x, upgradeTower.y - 30, `АПГРЕЙД ${upgradeTower.getConfig().name}`, '#22c55e'));
@@ -1213,14 +1257,9 @@ class UI {
     sellSelectedTower() {
         const tower = this.game.selectedTower;
         if (!tower || tower.isDestroyed) return;
-        this.game.gold += tower.getSellValue();
-        this.game.restoreTowerCells(tower);
-        this.game.towers = this.game.towers.filter(t => t !== tower);
-        this.game.syncMapOccupancy();
-        this.game.removeTowerFromSelections(tower);
-        this.updateGold(this.game.gold);
+        if (!this.game.sellTower(tower)) return;
+        this.updateGold(this.game.getDisplayGold());
         this.hideTowerInfo();
-        if (this.game.audio) this.game.audio.playSell();
     }
     toggleSelectedTowerInfo() {
         const tower = this.game.selectedTower;
@@ -1394,11 +1433,11 @@ class UI {
     }
     hideGameOver() { this.overlayEl.style.display = 'none'; }
     reset(startInMenu = false) {
-        this.updateGold(this.game.gold); this.updateLives(this.game.lives); this.updateWave(this.game.currentWave);
+        this.updateGold(this.game.getDisplayGold()); this.updateLives(this.game.lives); this.updateWave(this.game.currentWave);
         this.showCountdownState(); this.hideTowerInfo(); this.hideGameOver(); this.deselectAllTowerButtons();
         this.pauseBtn.textContent = '▮▮ ПАУЗА'; this.speedBtn.textContent = '▶ x1';
         this.game.selectedTowerType = null; this.game.selectedTower = null; this.game.selectedTowers = []; this.game.controlGroups = {}; this.topUiHidden = false; this.sidebarHidden = false; this.mapOnlyActive = false;
-        this.lastTowerInfoKey = ''; this.applyLayoutState(); this.hideActionHud(); this.hideSettingsPanel(); this.updateTowerButtons(); this.updateAbilityBar(); this.updateTestAccessState();
+        this.lastTowerInfoKey = ''; this.applyLayoutState(); this.hideActionHud(); this.hideSettingsPanel(); this.updateTowerButtons(); this.updateAbilityBar(); this.updateTestAccessState(); this.applyMultiplayerRoleState();
         if (startInMenu) this.showStartScreen(this.game.selectedMapId);
         else this.hideStartScreen();
     }
