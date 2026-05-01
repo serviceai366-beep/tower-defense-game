@@ -14,6 +14,7 @@ class MultiplayerClient {
         this.codeInput = document.getElementById('room-code-input');
         this.createBtn = document.getElementById('btn-create-room');
         this.joinBtn = document.getElementById('btn-join-room');
+        this.leaveBtn = document.getElementById('btn-leave-room');
         this.statusEl = document.getElementById('room-status');
         this.bind();
         this.game.setMultiplayerAdapter(this);
@@ -21,6 +22,7 @@ class MultiplayerClient {
     bind() {
         this.createBtn?.addEventListener('click', () => this.createRoom());
         this.joinBtn?.addEventListener('click', () => this.joinRoom());
+        this.leaveBtn?.addEventListener('click', () => this.leaveRoom());
         this.codeInput?.addEventListener('input', () => {
             this.codeInput.value = this.codeInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
         });
@@ -82,6 +84,7 @@ class MultiplayerClient {
         this.playerCount = data.playerCount || 1;
         this.lastEventId = data.lastEventId || 0;
         if (this.codeInput) this.codeInput.value = this.roomCode;
+        if (this.leaveBtn) this.leaveBtn.hidden = false;
         window.clearInterval(this.pollTimer);
         window.clearInterval(this.snapshotTimer);
         this.pollTimer = window.setInterval(() => this.poll(), this.isGuest() ? 90 : 120);
@@ -92,6 +95,7 @@ class MultiplayerClient {
         }
         this.game.syncVisibleGold();
         this.game.ui.applyMultiplayerRoleState?.();
+        window.addEventListener('beforeunload', this.beforeUnloadHandler ||= (() => this.sendLeaveBeacon()));
     }
     async poll() {
         if (!this.isRoomActive()) return;
@@ -100,6 +104,11 @@ class MultiplayerClient {
             const previousPlayerCount = this.playerCount;
             this.playerCount = data.playerCount || this.playerCount;
             if (!this.isGuest() && previousPlayerCount < 2 && this.playerCount >= 2) this.game.applyCoopHpBoostToAliveEnemies();
+            const roomWasClosed = Array.isArray(data.events) && data.events.some(event => event.command?.type === 'playerLeft' && event.playerId !== this.playerId);
+            if (roomWasClosed) {
+                this.game.endCoopSession('Игрок вышел, поэтому игра закончена');
+                return;
+            }
             if (this.isGuest() && data.snapshot) this.game.applySnapshot(data.snapshot);
             if (!this.isGuest() && Array.isArray(data.events)) {
                 let appliedRemoteCommand = false;
@@ -114,7 +123,7 @@ class MultiplayerClient {
             if (this.isGuest() && (!data.snapshot || !data.snapshot.active)) {
                 this.setWaitingForHost();
             } else {
-                const label = this.playerCount >= 2 ? 'Co-op active: enemy HP x2.' : 'Waiting for second player...';
+                const label = this.playerCount >= 2 ? 'Co-op active: enemy HP +75%.' : 'Waiting for second player...';
                 this.setStatus(`Room ${this.roomCode}. You are ${this.playerKey.toUpperCase()}. ${label}`, 'ready');
             }
             this.game.ui.applyMultiplayerRoleState?.();
@@ -147,6 +156,38 @@ class MultiplayerClient {
         }
     }
     notifyLocalAction() {}
+    sendLeaveBeacon() {
+        if (!this.isRoomActive() || !navigator.sendBeacon) return;
+        const body = JSON.stringify({
+            playerId: this.playerId,
+            command: { type: 'playerLeft' },
+        });
+        navigator.sendBeacon(`${this.serverUrl}/rooms/${this.roomCode}/events`, body);
+    }
+    disconnectLocally() {
+        window.clearInterval(this.pollTimer);
+        window.clearInterval(this.snapshotTimer);
+        this.pollTimer = 0;
+        this.snapshotTimer = 0;
+        this.roomCode = '';
+        this.playerId = '';
+        this.playerKey = 'p1';
+        this.role = 'solo';
+        this.playerCount = 1;
+        this.lastEventId = 0;
+        if (this.leaveBtn) this.leaveBtn.hidden = true;
+        window.removeEventListener('beforeunload', this.beforeUnloadHandler);
+        this.game.syncVisibleGold();
+        this.game.ui.applyMultiplayerRoleState?.();
+    }
+    async leaveRoom() {
+        if (!this.isRoomActive()) return;
+        const message = 'Игрок вышел, поэтому игра закончена';
+        try {
+            await this.sendCommand({ type: 'playerLeft' });
+        } catch (_) {}
+        this.game.endCoopSession(message);
+    }
 }
 
 window.addEventListener('DOMContentLoaded', () => {
