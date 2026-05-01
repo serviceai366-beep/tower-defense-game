@@ -517,6 +517,11 @@ class Game {
     getLocalPlayerKey() { return this.multiplayer?.getLocalPlayerKey?.() || 'p1'; }
     getDisplayGold() { return this.isRoomActive() ? (this.playerGold[this.getLocalPlayerKey()] ?? 0) : this.gold; }
     syncVisibleGold() { this.ui.updateGold(this.getDisplayGold()); }
+    getCoopMoneyAmount(amount) {
+        const value = Number(amount) || 0;
+        if (!this.isRoomActive()) return value;
+        return Math.max(0, Math.round(value * (CONFIG.COOP_MONEY_MULTIPLIER ?? 0.9)));
+    }
     canControlTower(tower, playerKey = this.getLocalPlayerKey()) {
         return !!tower && !tower.isDestroyed && (!this.isRoomActive() || (tower.ownerId || 'p1') === playerKey);
     }
@@ -538,6 +543,7 @@ class Game {
         return true;
     }
     awardPlayerGold(playerKey, amount) {
+        amount = this.getCoopMoneyAmount(amount);
         if (!this.isRoomActive()) {
             this.gold += amount;
             this.playerGold.p1 = this.gold;
@@ -1048,7 +1054,7 @@ class Game {
     getCurrentSkipBonus() {
         const max = this.currentWave === 0 ? CONFIG.FIRST_WAVE_TIMER : CONFIG.WAVE_TIMER;
         const ratio = Math.max(0, this.waveCountdown / max);
-        return Math.round(this.getMaxSkipBonus() * ratio);
+        return this.getCoopMoneyAmount(Math.round(this.getMaxSkipBonus() * ratio));
     }
     announceBoss(enemy) {
         this.bossIntroTimer = 2.4;
@@ -1059,7 +1065,7 @@ class Game {
     }
     giveWaveRewards() {
         const center = this.getViewportCenterWorld();
-        const reward = this.getWaveReward();
+        const reward = this.getCoopMoneyAmount(this.getWaveReward());
         if (this.isRoomActive()) {
             this.playerGold.p1 = (this.playerGold.p1 || 0) + reward;
             this.playerGold.p2 = (this.playerGold.p2 || 0) + reward;
@@ -1070,7 +1076,7 @@ class Game {
         this.floatingTexts.push(new FloatingText(center.x, this.cameraY + 30, '+' + reward + ' РАУНД', '#22c55e'));
         const farmIncomeByPlayer = { p1: 0, p2: 0 };
         for (const t of this.towers) {
-            if (t.isFarm && !t.isDestroyed && !t.isBusy() && !t.isDisabled()) farmIncomeByPlayer[t.ownerId || 'p1'] = (farmIncomeByPlayer[t.ownerId || 'p1'] || 0) + t.farmIncome;
+            if (t.isFarm && !t.isDestroyed && !t.isBusy() && !t.isDisabled()) farmIncomeByPlayer[t.ownerId || 'p1'] = (farmIncomeByPlayer[t.ownerId || 'p1'] || 0) + this.getCoopMoneyAmount(t.farmIncome);
         }
         const totalFarmIncome = Object.values(farmIncomeByPlayer).reduce((sum, value) => sum + value, 0);
         if (totalFarmIncome > 0) {
