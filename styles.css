@@ -976,6 +976,18 @@ body.ui-map-only #canvas-wrapper {
     color: var(--accent-l)
 }
 
+.btn-danger.coop-exit {
+    min-width: 96px;
+    background: linear-gradient(180deg, rgba(127, 29, 29, 0.92), rgba(69, 10, 10, 0.92));
+    color: #fee2e2;
+    border-color: rgba(248, 113, 113, 0.45);
+}
+
+.btn-danger.coop-exit:hover {
+    background: linear-gradient(180deg, rgba(153, 27, 27, 0.98), rgba(91, 15, 15, 0.98));
+    color: #fff;
+}
+
 .settings-group-title {
     font-size: 0.74rem;
     font-weight: 800;
@@ -1506,6 +1518,17 @@ body.ui-map-only #canvas-wrapper {
     width: auto;
     min-width: 112px;
     flex: 0 0 auto;
+}
+
+.leave-room-btn {
+    color: #fee2e2;
+    border-color: rgba(248, 113, 113, 0.36);
+    background: rgba(69, 10, 10, 0.84);
+}
+
+.leave-room-btn:hover {
+    color: #fff;
+    background: rgba(127, 29, 29, 0.95);
 }
 
 .room-status {
