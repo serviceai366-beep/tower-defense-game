@@ -1,7 +1,7 @@
 const CONFIG = {
     GRID_COLS: 20, GRID_ROWS: 12, CELL_SIZE: 50,
     CANVAS_WIDTH: 1000, CANVAS_HEIGHT: 600,
-    START_GOLD: 200, START_LIVES: 25, LEGACY_START_LIVES: 25, BASE_HP_PER_LEGACY_LIFE: 1, TOTAL_WAVES: 20,
+    START_GOLD: 170, START_LIVES: 500, LEGACY_START_LIVES: 25, BASE_HP_PER_LEGACY_LIFE: 20, TOTAL_WAVES: 20,
     PROJECTILE_SPEED: 420, SELL_RATIO: 0.5,
     WAVE_TIMER: 25, FIRST_WAVE_TIMER: 18,
     WAVE_REWARD_BASE: 30, WAVE_REWARD_PER_WAVE: 6,
@@ -15,7 +15,7 @@ const DIFFICULTY_LEVELS = {
         name: 'Easy',
         badge: 'Лёгкий вход',
         description: 'Меньше врагов, медленнее темп, слабее боссы. Подходит для спокойного изучения карт и башен.',
-        startGold: 320,
+        startGold: 272,
         countScale: 0.65,
         intervalScale: 1.18,
         enemyHpScale: 0.78,
@@ -30,7 +30,7 @@ const DIFFICULTY_LEVELS = {
         name: 'Medium',
         badge: 'Сбалансировано',
         description: 'Умеренный темп и чуть мягче волны. Ошибки всё ещё опасны, но игра даёт больше пространства.',
-        startGold: 250,
+        startGold: 213,
         countScale: 0.84,
         intervalScale: 1.08,
         enemyHpScale: 0.90,
@@ -795,7 +795,7 @@ function calculateEquivalentBaseHp() {
     return Math.max(CONFIG.LEGACY_START_LIVES, Math.round(CONFIG.LEGACY_START_LIVES * (totalEnemyHp / totalLegacyDamage)));
 }
 
-CONFIG.START_LIVES = calculateEquivalentBaseHp();
+CONFIG.START_LIVES = 500;
 CONFIG.BASE_HP_PER_LEGACY_LIFE = CONFIG.START_LIVES / CONFIG.LEGACY_START_LIVES;
 
 const TARGET_MODES = ['first', 'last', 'strong', 'close'];
