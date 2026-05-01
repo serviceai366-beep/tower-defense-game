@@ -566,7 +566,7 @@ class Game {
             };
         }
         if (this.isCoopActive()) {
-            next.hp = Math.max(1, Math.round((next.hp ?? overrides.hp ?? cfg.hp ?? 1) * 2));
+            next.hp = Math.max(1, Math.round((next.hp ?? overrides.hp ?? cfg.hp ?? 1) * 1.75));
         }
         return next;
     }
@@ -1120,7 +1120,7 @@ class Game {
             this.ui.tick(dt);
             return;
         }
-        if (this.isPaused || this.gameState === 'won' || this.gameState === 'lost') return;
+        if (this.isPaused || this.gameState === 'won' || this.gameState === 'lost' || this.gameState === 'ended') return;
         dt = Math.min(dt * this.gameSpeed, 0.1);
         this.updateCamera(dt);
         this.baseHitFlash = Math.max(0, this.baseHitFlash - dt * 2.8);
@@ -1360,7 +1360,7 @@ class Game {
         if (this.activeBoss && !this.activeBoss.isDead && !this.activeBoss.reachedEnd) this.drawBossIntro(ctx);
         this.drawMiniMap(ctx);
         this.drawLargeMapOverlay(ctx);
-        if (this.isPaused && this.gameState !== 'won' && this.gameState !== 'lost') {
+        if (this.isPaused && this.gameState !== 'won' && this.gameState !== 'lost' && this.gameState !== 'ended') {
             ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0, 0, CONFIG.CANVAS_WIDTH, CONFIG.CANVAS_HEIGHT);
             ctx.font = 'bold 42px monospace'; ctx.fillStyle = '#dc2626'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
             ctx.fillText('▮▮ ПАУЗА', CONFIG.CANVAS_WIDTH / 2, CONFIG.CANVAS_HEIGHT / 2);
@@ -1814,6 +1814,10 @@ class Game {
             });
             return;
         }
+        if (command.type === 'playerLeft') {
+            this.endCoopSession('Игрок вышел, поэтому игра закончена');
+            return;
+        }
         if (command.type === 'skipCountdown' && (command.playerKey || command.ownerId) === 'p1') {
             this.skipCountdown();
         }
@@ -1825,6 +1829,8 @@ class Game {
             mapId: this.selectedMapId,
             difficultyId: this.selectedDifficultyId,
             gameState: this.gameState,
+            isPaused: this.isPaused,
+            gameSpeed: this.gameSpeed,
             lives: this.lives,
             currentWave: this.currentWave,
             maxWaveReached: this.maxWaveReached,
@@ -1840,6 +1846,8 @@ class Game {
         if (snapshot.mapId && snapshot.mapId !== this.selectedMapId) this.selectMap(snapshot.mapId, { fromSnapshot: true });
         this.selectedDifficultyId = snapshot.difficultyId || this.selectedDifficultyId;
         this.gameState = snapshot.gameState || this.gameState;
+        this.isPaused = !!snapshot.isPaused;
+        this.gameSpeed = snapshot.gameSpeed || this.gameSpeed;
         this.lives = snapshot.lives ?? this.lives;
         this.currentWave = snapshot.currentWave ?? this.currentWave;
         this.maxWaveReached = snapshot.maxWaveReached ?? this.maxWaveReached;
@@ -1909,13 +1917,31 @@ class Game {
     applyCoopHpBoostToAliveEnemies() {
         for (const enemy of this.enemies) {
             if (enemy.isDead || enemy.reachedEnd || enemy.coopBoosted) continue;
-            enemy.maxHp = Math.max(1, Math.round(enemy.maxHp * 2));
-            enemy.hp = Math.max(1, Math.round(enemy.hp * 2));
+            enemy.maxHp = Math.max(1, Math.round(enemy.maxHp * 1.75));
+            enemy.hp = Math.max(1, Math.round(enemy.hp * 1.75));
             enemy.coopBoosted = true;
         }
     }
+    endCoopSession(message = 'Игрок вышел, поэтому игра закончена') {
+        this.gameState = 'ended';
+        this.isPaused = true;
+        this.selectedTowerType = null;
+        this.clearTowerSelection(true);
+        this.clearSelectedAbility?.();
+        this.multiplayer?.disconnectLocally?.();
+        this.ui.showSessionEnded?.(message);
+        this.ui.applyMultiplayerRoleState?.();
+    }
     gameLoop(ts) { const dt = Math.min((ts - this.lastTime) / 1000, 0.1); this.lastTime = ts; this.update(dt); this.render(); requestAnimationFrame((t) => this.gameLoop(t)); }
     restart() {
+        if (this.isRoomActive()) {
+            this.multiplayer?.leaveRoom?.();
+            return;
+        }
+        if (this.gameState === 'ended') {
+            this.resetMatchState(true);
+            return;
+        }
         this.resetMatchState(false);
     }
 }
