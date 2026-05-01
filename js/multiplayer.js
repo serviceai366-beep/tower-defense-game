@@ -32,6 +32,9 @@ class MultiplayerClient {
     isCoopActive() { return this.isRoomActive() && this.playerCount >= 2; }
     isGuest() { return this.role === 'guest'; }
     getLocalPlayerKey() { return this.playerKey || 'p1'; }
+    setWaitingForHost() {
+        this.setStatus('Ждем, пока ваш партнер сделает выбор', 'ready');
+    }
     setStatus(text, kind = '') {
         if (!this.statusEl) return;
         this.statusEl.textContent = text;
@@ -52,7 +55,7 @@ class MultiplayerClient {
         try {
             const data = await this.request('/rooms', {});
             this.connectRoom(data, 'host');
-            this.setStatus(`Room ${this.roomCode}. Send this code to player 2. Waiting for partner...`, 'ready');
+            this.setStatus(`Room ${this.roomCode}. You are the host. Choose mode, difficulty and map.`, 'ready');
         } catch (err) {
             this.setStatus(`Cannot create room: ${err.message}`, 'error');
         }
@@ -66,7 +69,7 @@ class MultiplayerClient {
         try {
             const data = await this.request(`/rooms/${code}/join`, {});
             this.connectRoom(data, 'guest');
-            this.setStatus(`Joined room ${this.roomCode}. Waiting for host state...`, 'ready');
+            this.setWaitingForHost();
         } catch (err) {
             this.setStatus(`Cannot join room: ${err.message}`, 'error');
         }
@@ -81,12 +84,14 @@ class MultiplayerClient {
         if (this.codeInput) this.codeInput.value = this.roomCode;
         window.clearInterval(this.pollTimer);
         window.clearInterval(this.snapshotTimer);
-        this.pollTimer = window.setInterval(() => this.poll(), this.isGuest() ? 180 : 140);
+        this.pollTimer = window.setInterval(() => this.poll(), this.isGuest() ? 90 : 120);
         this.poll();
         if (!this.isGuest()) {
-            this.snapshotTimer = window.setInterval(() => this.publishSnapshot(), 220);
+            this.snapshotTimer = window.setInterval(() => this.publishSnapshot(), 120);
+            this.publishSnapshot();
         }
         this.game.syncVisibleGold();
+        this.game.ui.applyMultiplayerRoleState?.();
     }
     async poll() {
         if (!this.isRoomActive()) return;
@@ -97,14 +102,22 @@ class MultiplayerClient {
             if (!this.isGuest() && previousPlayerCount < 2 && this.playerCount >= 2) this.game.applyCoopHpBoostToAliveEnemies();
             if (this.isGuest() && data.snapshot) this.game.applySnapshot(data.snapshot);
             if (!this.isGuest() && Array.isArray(data.events)) {
+                let appliedRemoteCommand = false;
                 for (const event of data.events) {
                     this.lastEventId = Math.max(this.lastEventId, event.id || 0);
                     if (event.playerId === this.playerId) continue;
                     this.game.applyRemoteCommand({ ...event.command, playerKey: event.playerKey });
+                    appliedRemoteCommand = true;
                 }
+                if (appliedRemoteCommand) this.publishSnapshot();
             }
-            const label = this.playerCount >= 2 ? 'Co-op active: enemy HP x2.' : 'Waiting for second player...';
-            this.setStatus(`Room ${this.roomCode}. You are ${this.playerKey.toUpperCase()}. ${label}`, 'ready');
+            if (this.isGuest() && (!data.snapshot || !data.snapshot.active)) {
+                this.setWaitingForHost();
+            } else {
+                const label = this.playerCount >= 2 ? 'Co-op active: enemy HP x2.' : 'Waiting for second player...';
+                this.setStatus(`Room ${this.roomCode}. You are ${this.playerKey.toUpperCase()}. ${label}`, 'ready');
+            }
+            this.game.ui.applyMultiplayerRoleState?.();
         } catch (err) {
             this.setStatus(`Room connection problem: ${err.message}`, 'error');
         }
