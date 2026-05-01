@@ -641,13 +641,13 @@ const TOWER_TYPES = {
         name: 'Завод', icon: '🏭', description: 'Производит бронемашины, которые выезжают из базы и таранят врагов на дороге',
         cost: 260, damage: 0, range: 0, fireRate: 999, hp: 180, unlockWave: 3,
         isFactory: true, canPlaceAnywhere: true,
-        vehicleCost: 80, vehicleBuildTime: 5, vehicleHp: 165, vehicleSpeed: 138,
+        vehicleCost: 175, vehicleBuildTime: 12, vehicleHp: 165, vehicleSpeed: 138,
         baseColor: '#334155', turretColor: '#64748b', barrelColor: '#f59e0b',
         projectileColor: '#facc15', projectileSize: 0, isAoe: false, chainTargets: 0,
         buildTime: 5.0, upgradeTimes: [3.5, 5.0],
         upgrades: [
-            { cost: 210, hp: 230, vehicleCost: 115, vehicleBuildTime: 6, vehicleHp: 255, vehicleSpeed: 146 },
-            { cost: 340, hp: 290, vehicleCost: 165, vehicleBuildTime: 7, vehicleHp: 390, vehicleSpeed: 154 },
+            { cost: 210, hp: 230, vehicleHp: 255, vehicleSpeed: 146 },
+            { cost: 340, hp: 290, vehicleHp: 390, vehicleSpeed: 154 },
         ],
     },
     djBooth: {
