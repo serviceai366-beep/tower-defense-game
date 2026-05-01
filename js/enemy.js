@@ -1,5 +1,7 @@
 class Enemy {
     constructor(type, map, overrides = {}) {
+        Enemy.nextId = Enemy.nextId || 1;
+        this.id = overrides.id || `en${Enemy.nextId++}`;
         const cfg = ENEMY_TYPES[type];
         this.type = type; this.name = overrides.name ?? cfg.name;
         this.maxHp = overrides.hp ?? cfg.hp; this.hp = this.maxHp;
@@ -53,6 +55,7 @@ class Enemy {
     takeDamage(amount) { this.hp -= amount; if (this.hp <= 0) { this.hp = 0; this.isDead = true; } }
     toSnapshot() {
         return {
+            id: this.id,
             type: this.type, hp: this.hp, maxHp: this.maxHp, baseSpeed: this.baseSpeed, speed: this.speed,
             reward: this.reward, distance: this.distance, x: this.x, y: this.y, angle: this.angle,
             pathIndex: this.pathIndex, isDead: this.isDead, reachedEnd: this.reachedEnd,
@@ -61,17 +64,40 @@ class Enemy {
             coopBoosted: !!this.coopBoosted,
         };
     }
-    applySnapshot(data) {
+    applySnapshot(data, smooth = false) {
         if (!data) return this;
+        if (data.id) this.id = data.id;
         this.hp = data.hp ?? this.hp;
         this.maxHp = data.maxHp ?? this.maxHp;
         this.baseSpeed = data.baseSpeed ?? this.baseSpeed;
         this.speed = data.speed ?? this.speed;
         this.reward = data.reward ?? this.reward;
-        this.distance = data.distance ?? this.distance;
-        this.x = data.x ?? this.x;
-        this.y = data.y ?? this.y;
-        this.angle = data.angle ?? this.angle;
+        const nextDistance = data.distance ?? this.distance;
+        const nextX = data.x ?? this.x;
+        const nextY = data.y ?? this.y;
+        const nextAngle = data.angle ?? this.angle;
+        if (smooth && Number.isFinite(nextX) && Number.isFinite(nextY)) {
+            const gap = Math.hypot(nextX - this.x, nextY - this.y);
+            if (gap > 95 || this.remoteX === undefined) {
+                this.x = nextX;
+                this.y = nextY;
+                this.distance = nextDistance;
+                this.angle = nextAngle;
+            }
+            this.remoteX = nextX;
+            this.remoteY = nextY;
+            this.remoteDistance = nextDistance;
+            this.remoteAngle = nextAngle;
+        } else {
+            this.distance = nextDistance;
+            this.x = nextX;
+            this.y = nextY;
+            this.angle = nextAngle;
+            this.remoteX = nextX;
+            this.remoteY = nextY;
+            this.remoteDistance = nextDistance;
+            this.remoteAngle = nextAngle;
+        }
         this.pathIndex = data.pathIndex ?? this.pathIndex;
         this.isDead = !!data.isDead;
         this.reachedEnd = !!data.reachedEnd;
@@ -82,6 +108,21 @@ class Enemy {
         this.burnTimer = data.burnTimer ?? this.burnTimer;
         this.coopBoosted = !!data.coopBoosted;
         return this;
+    }
+    updateRemotePresentation(dt) {
+        if (this.remoteX !== undefined && this.remoteY !== undefined) {
+            const blend = Math.min(1, dt * 12);
+            this.x += (this.remoteX - this.x) * blend;
+            this.y += (this.remoteY - this.y) * blend;
+            this.distance += ((this.remoteDistance ?? this.distance) - this.distance) * blend;
+            this.angle = this.remoteAngle ?? this.angle;
+        }
+        this.wobble += dt * Math.max(2.5, this.speed * 0.08);
+        this.attackAnimTimer += dt * 9;
+        this.skyAttackAnimTimer = Math.max(0, this.skyAttackAnimTimer - dt);
+        this.slowTimer = Math.max(0, this.slowTimer - dt);
+        this.burnTimer = Math.max(0, this.burnTimer - dt);
+        this.stunTimer = Math.max(0, this.stunTimer - dt);
     }
     applySlow(factor, duration) { this.slowFactor = Math.min(this.slowFactor, factor); this.slowTimer = Math.max(this.slowTimer, duration); }
     applyBurn(dps, duration) {
