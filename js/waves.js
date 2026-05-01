@@ -28,10 +28,14 @@ class WaveManager {
         const difficulty = this.game.getDifficultyConfig();
         for (const group of waveGroups) {
             let q = [];
-            const count = difficulty.id === 'hard'
+            let count = difficulty.id === 'hard'
                 ? group.count
                 : Math.max(1, Math.round(group.count * difficulty.countScale));
-            const interval = group.interval * (difficulty.intervalScale || 1);
+            let interval = group.interval * (difficulty.intervalScale || 1);
+            if (this.game.isCoopActive?.()) {
+                count = Math.max(1, Math.round(count * (CONFIG.COOP_COUNT_MULTIPLIER || 0.92)));
+                interval *= (CONFIG.COOP_INTERVAL_MULTIPLIER || 1.08);
+            }
             for (let i = 0; i < count; i++) {
                 q.push({ type: group.type, delay: interval });
             }
