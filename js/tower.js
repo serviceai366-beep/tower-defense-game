@@ -1,5 +1,7 @@
 class Tower {
     constructor(col, row, type) {
+        Tower.nextId = Tower.nextId || 1;
+        this.id = `tw${Tower.nextId++}`;
         this.col = col; this.row = row; this.type = type; this.level = 1;
         this.targetMode = 'first';
         const cfg = TOWER_TYPES[type];
@@ -51,6 +53,7 @@ class Tower {
     getConfig() { return TOWER_TYPES[this.type]; }
     toSnapshot() {
         return {
+            id: this.id,
             col: this.col, row: this.row, type: this.type, level: this.level, ownerId: this.ownerId || 'p1',
             hp: this.hp, maxHp: this.maxHp, totalInvested: this.totalInvested, isDestroyed: this.isDestroyed,
             buildTimer: this.buildTimer, buildDuration: this.buildDuration,
@@ -63,6 +66,7 @@ class Tower {
     }
     applySnapshot(data) {
         if (!data) return this;
+        if (data.id) this.id = data.id;
         this.level = data.level ?? this.level;
         this.ownerId = data.ownerId || this.ownerId || 'p1';
         this.hp = data.hp ?? this.hp;
@@ -84,6 +88,19 @@ class Tower {
         this.disabledTimer = data.disabledTimer ?? this.disabledTimer;
         this.fortressTimer = data.fortressTimer ?? this.fortressTimer;
         return this;
+    }
+    updateRemotePresentation(dt) {
+        this.muzzleFlash = Math.max(0, this.muzzleFlash - dt);
+        this.launchFlash = Math.max(0, this.launchFlash - dt);
+        this.disabledTimer = Math.max(0, this.disabledTimer - dt);
+        this.fortressTimer = Math.max(0, this.fortressTimer - dt);
+        if (this.buildTimer > 0) this.buildTimer = Math.max(0, this.buildTimer - dt);
+        if (this.upgradeTimer > 0) this.upgradeTimer = Math.max(0, this.upgradeTimer - dt);
+        if (this.isAirfield) {
+            this.airLaunchProgress = Math.min(1, this.airLaunchProgress + dt / Math.max(0.1, this.takeoffTime || 1));
+            this.airAngle += (this.orbitSpeed || 0) * dt;
+            this.rocketTimer = Math.max(0, this.rocketTimer - dt);
+        }
     }
     getFootprintCells(anchorCol = this.col, anchorRow = this.row) {
         return this.footprint.map(cell => ({ col: anchorCol + cell.x, row: anchorRow + cell.y }));
