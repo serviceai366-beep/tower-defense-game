@@ -177,6 +177,18 @@
                             <div class="tower-btn-cost">&#x1F4B0; 200</div>
                             <div class="tower-btn-lock" style="display:none"></div>
                         </button>
+                        <button class="tower-btn" data-type="factory">
+                            <div class="tower-btn-icon">&#x1F3ED;</div>
+                            <div class="tower-btn-name">Завод</div>
+                            <div class="tower-btn-cost">&#x1F4B0; 260</div>
+                            <div class="tower-btn-lock" style="display:none"></div>
+                        </button>
+                        <button class="tower-btn" data-type="djBooth">
+                            <div class="tower-btn-icon">&#x1F39B;</div>
+                            <div class="tower-btn-name">Диджейский пульт</div>
+                            <div class="tower-btn-cost">&#x1F4B0; 325</div>
+                            <div class="tower-btn-lock" style="display:none"></div>
+                        </button>
                         <button class="tower-btn" data-type="scanner">
                             <div class="tower-btn-icon">&#x1F4E1;</div>
                             <div class="tower-btn-name">Сканер</div>
@@ -345,6 +357,19 @@
                                 <button id="btn-leave-room" class="btn btn-danger multiplayer-btn leave-room-btn" type="button" hidden>LEAVE</button>
                             </div>
                             <div id="room-status" class="room-status">Solo mode. Start a room to play together.</div>
+                            <div id="coop-chat" class="coop-chat" hidden>
+                                <div class="coop-chat-head">
+                                    <span>ROOM CHAT</span>
+                                    <button id="btn-toggle-chat" class="coop-chat-toggle" type="button">−</button>
+                                </div>
+                                <div id="coop-chat-body" class="coop-chat-body">
+                                    <div id="coop-chat-messages" class="coop-chat-messages"></div>
+                                    <form id="coop-chat-form" class="coop-chat-form">
+                                        <input id="coop-chat-input" class="coop-chat-input" type="text" maxlength="120" placeholder="Message..." autocomplete="off">
+                                        <button class="coop-chat-send" type="submit">SEND</button>
+                                    </form>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div id="difficulty-panel" class="difficulty-panel" aria-hidden="true">
