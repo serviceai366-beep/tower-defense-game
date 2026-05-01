@@ -1325,7 +1325,7 @@ class UI {
             const fc = this.game.towers.filter(t => t.isFarm && !t.isDestroyed).length;
             html += `<div>🌾 Доход: <strong>${tower.getEffectiveFarmIncome()}💰/раунд</strong></div><div>🛡 HP: <strong>${Math.round(tower.hp)}/${tower.getEffectiveMaxHp()}</strong></div><div>🏠 Ферм: <strong>${fc}/${CONFIG.MAX_FARMS}</strong></div>`;
         } else if (tower.isFactory) {
-            html += `<div>🏭 Производство: <strong>${tower.vehicleBuildTimer > 0 ? 'идёт' : 'готово'}</strong></div><div>🚗 Машина: <strong>${Math.round(tower.vehicleHp * tower.getBuffMultiplier())} HP</strong></div><div>💰 Цена машины: <strong>${tower.vehicleCost}</strong></div><div>⏱ Сборка: <strong>${this.fmtTime(tower.vehicleBuildTime)}</strong></div><div>🛡 HP: <strong>${Math.round(tower.hp)}/${tower.getEffectiveMaxHp()}</strong></div>`;
+            html += `<div>🏭 Пуск: <strong>${tower.vehicleBuildTimer > 0 ? 'перезарядка' : 'готов'}</strong></div><div>🚗 Машина: <strong>${Math.round(tower.vehicleHp * tower.getBuffMultiplier())} HP</strong></div><div>💰 Цена запуска: <strong>${tower.vehicleCost}</strong></div><div>⏱ Перезарядка: <strong>${this.fmtTime(tower.vehicleBuildTime)}</strong></div><div>🛡 HP: <strong>${Math.round(tower.hp)}/${tower.getEffectiveMaxHp()}</strong></div>`;
         } else if (tower.isDjBooth) {
             html += `<div>🎛 Усиление: <strong>+${Math.round((tower.buffPercent || 0) * 100)}%</strong></div><div>📏 Радиус: <strong>${Math.round(tower.getEffectiveRange())}px</strong></div><div>🛡 HP: <strong>${Math.round(tower.hp)}/${tower.getEffectiveMaxHp()}</strong></div><div>🎚 Эффект: <strong>урон, HP, дальность, доход</strong></div>`;
         } else if (tower.isNukeSilo) {
@@ -1391,9 +1391,9 @@ class UI {
             const canControl = this.game.canControlTower(tower);
             const canBuyVehicle = canControl && !busy && !tower.isDisabled() && tower.vehicleBuildTimer <= 0 && this.game.getDisplayGold() >= tower.vehicleCost;
             html += `<div class="info-build" style="margin-top:8px;padding:8px;border:1px solid rgba(250,204,21,0.18);border-radius:6px;background:rgba(250,204,21,0.08)">
-                <div>🚗 ПРОИЗВОДСТВО</div>
-                <div style="margin-top:4px;color:#cbd5e1">${tower.vehicleBuildTimer > 0 ? 'До выезда: <strong>' + this.fmtTime(tower.vehicleBuildTimer) + '</strong>' : 'Бронемашина едет от базы навстречу волне и таранит врагов.'}</div>
-                <button id="btn-buy-vehicle" class="btn-small" type="button" ${canBuyVehicle ? '' : 'disabled'}>КУПИТЬ МАШИНУ · ${tower.vehicleCost}💰</button>
+                <div>🚗 ЗАПУСК МАШИНЫ</div>
+                <div style="margin-top:4px;color:#cbd5e1">${tower.vehicleBuildTimer > 0 ? 'Перезарядка: <strong>' + this.fmtTime(tower.vehicleBuildTimer) + '</strong>' : 'Нажми кнопку — бронемашина сразу выедет из базы и поедет навстречу волне.'}</div>
+                <button id="btn-buy-vehicle" class="btn-small" type="button" ${canBuyVehicle ? '' : 'disabled'}>ЗАПУСТИТЬ МАШИНУ · ${tower.vehicleCost}💰</button>
             </div>`;
         }
         if (!tower.isScanner && !tower.isHealer && !tower.isFarm && !tower.isWall && !tower.isPulseTower && !tower.isNukeSilo && !tower.isManualAim && !tower.isFactory && !tower.isDjBooth) html += `<div class="info-target">Цель: <button id="btn-target-mode" class="btn-small">${TARGET_MODE_NAMES[tower.targetMode]}</button></div>`;
