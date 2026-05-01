@@ -242,7 +242,7 @@ class UI {
             btn.classList.toggle('ready', ready);
             btn.classList.toggle('empty', !ready);
             btn.classList.toggle('active', this.game.selectedAbilityKind === kind);
-            btn.disabled = this.game.gameState === 'menu' || this.game.gameState === 'won' || this.game.gameState === 'lost';
+            btn.disabled = this.game.gameState === 'menu' || this.game.gameState === 'won' || this.game.gameState === 'lost' || this.game.gameState === 'ended';
             const timerEl = btn.querySelector('.ability-timer');
             const chargesEl = btn.querySelector('.ability-charges');
             if (timerEl) timerEl.textContent = ready ? `+${this.formatAbilityTimer(state.nextChargeIn)}` : this.formatAbilityTimer(state.nextChargeIn);
@@ -277,7 +277,25 @@ class UI {
         this.continueMapSelectBtn?.toggleAttribute('disabled', guest);
         this.startMapBtn?.toggleAttribute('disabled', guest);
         this.skipBtn?.toggleAttribute('disabled', guest);
+        this.pauseBtn?.toggleAttribute('disabled', guest);
+        this.speedBtn?.toggleAttribute('disabled', guest);
         this.skipBtn?.classList.toggle('coop-disabled', guest);
+        this.pauseBtn?.classList.toggle('coop-disabled', guest);
+        this.speedBtn?.classList.toggle('coop-disabled', guest);
+        if (this.pauseBtn) {
+            this.pauseBtn.textContent = this.game.isPaused ? '▶ ПРОД.' : '▮▮ ПАУЗА';
+            this.pauseBtn.classList.toggle('active', this.game.isPaused && !guest);
+        }
+        if (this.speedBtn) {
+            this.speedBtn.textContent = this.game.gameSpeed === 3 ? '⏩ x3' : this.game.gameSpeed === 2 ? '⏩ x2' : '▶ x1';
+        }
+        if (this.restartBtn) {
+            const inRoom = this.game.isRoomActive();
+            this.restartBtn.disabled = false;
+            this.restartBtn.classList.toggle('coop-exit', inRoom);
+            this.restartBtn.textContent = inRoom ? '⎋ ВЫЙТИ' : '🔄';
+            this.restartBtn.title = inRoom ? 'Выйти из co-op матча' : 'Перезапуск карты';
+        }
         this.difficultyGrid?.querySelectorAll('.difficulty-card').forEach(card => {
             card.toggleAttribute('disabled', guest);
             card.classList.toggle('coop-locked', guest);
@@ -474,7 +492,7 @@ class UI {
                 return;
             }
             if (this.rebindingHotkeyTarget) return;
-            if (this.settingsOpen || this.game.gameState === 'menu' || this.game.gameState === 'won' || this.game.gameState === 'lost') return;
+            if (this.settingsOpen || this.game.gameState === 'menu' || this.game.gameState === 'won' || this.game.gameState === 'lost' || this.game.gameState === 'ended') return;
             if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
             const buildType = Object.keys(this.buildHotkeys || {}).find(type => this.buildHotkeys[type] === e.code);
             if (buildType) {
@@ -488,14 +506,18 @@ class UI {
         });
         this.skipBtn.addEventListener('click', () => this.game.skipCountdown());
         this.pauseBtn.addEventListener('click', () => {
+            if (this.game.isRemoteViewer()) return;
             this.game.isPaused = !this.game.isPaused;
             this.pauseBtn.textContent = this.game.isPaused ? '▶ ПРОД.' : '▮▮ ПАУЗА';
             this.pauseBtn.classList.toggle('active', this.game.isPaused);
+            this.game.multiplayer?.publishSnapshot?.();
         });
         this.speedBtn.addEventListener('click', () => {
+            if (this.game.isRemoteViewer()) return;
             if (this.game.gameSpeed === 1) { this.game.gameSpeed = 2; this.speedBtn.textContent = '⏩ x2'; }
             else if (this.game.gameSpeed === 2) { this.game.gameSpeed = 3; this.speedBtn.textContent = '⏩ x3'; }
             else { this.game.gameSpeed = 1; this.speedBtn.textContent = '▶ x1'; }
+            this.game.multiplayer?.publishSnapshot?.();
         });
         this.restartBtn.addEventListener('click', () => this.game.restart());
         this.overlayBtn.addEventListener('click', () => this.game.restart());
@@ -1430,6 +1452,14 @@ class UI {
         this.overlayTitle.textContent = won ? '🏆 ПОБЕДА' : '💀 ПОРАЖЕНИЕ';
         this.overlayTitle.style.color = won ? '#22c55e' : '#ef4444';
         this.overlayMessage.textContent = won ? `Все ${CONFIG.TOTAL_WAVES} волн пережиты!` : 'Зомби прорвались к базе...';
+        if (this.overlayBtn) this.overlayBtn.textContent = '🔄 ИГРАТЬ СНОВА';
+    }
+    showSessionEnded(message) {
+        this.overlayEl.style.display = 'flex';
+        this.overlayTitle.textContent = 'CO-OP ЗАВЕРШЕН';
+        this.overlayTitle.style.color = '#f97316';
+        this.overlayMessage.textContent = message || 'Игрок вышел, поэтому игра закончена';
+        if (this.overlayBtn) this.overlayBtn.textContent = '⌂ В МЕНЮ';
     }
     hideGameOver() { this.overlayEl.style.display = 'none'; }
     reset(startInMenu = false) {
