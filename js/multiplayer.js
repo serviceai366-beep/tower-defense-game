@@ -98,3 +98,151 @@ class MultiplayerClient {
         this.playerKey = data.playerKey || (fallbackRole === 'host' ? 'p1' : 'p2');
         this.role = data.role || fallbackRole;
         this.playerCount = data.playerCount || 1;
+        this.lastEventId = data.lastEventId || 0;
+        if (this.codeInput) this.codeInput.value = this.roomCode;
+        if (this.leaveBtn) this.leaveBtn.hidden = false;
+        if (this.chatEl) this.chatEl.hidden = false;
+        window.clearInterval(this.pollTimer);
+        window.clearInterval(this.snapshotTimer);
+        this.pollTimer = window.setInterval(() => this.poll(), this.isGuest() ? 70 : 50);
+        this.poll();
+        if (!this.isGuest()) {
+            this.snapshotTimer = window.setInterval(() => this.publishSnapshot(), 85);
+            this.publishSnapshot();
+        }
+        this.game.syncVisibleGold();
+        this.game.ui.applyMultiplayerRoleState?.();
+        window.addEventListener('beforeunload', this.beforeUnloadHandler ||= (() => this.sendLeaveBeacon()));
+    }
+    async poll() {
+        if (!this.isRoomActive()) return;
+        try {
+            const data = await this.request(`/rooms/${this.roomCode}/state?playerId=${encodeURIComponent(this.playerId)}&since=${this.lastEventId}`);
+            const previousPlayerCount = this.playerCount;
+            this.playerCount = data.playerCount || this.playerCount;
+            if (!this.isGuest() && previousPlayerCount < 2 && this.playerCount >= 2) this.game.applyCoopHpBoostToAliveEnemies();
+            if (Array.isArray(data.events)) {
+                let appliedRemoteCommand = false;
+                for (const event of data.events) {
+                    this.lastEventId = Math.max(this.lastEventId, event.id || 0);
+                    if (event.command?.type === 'playerLeft' && event.playerId !== this.playerId) {
+                        this.game.endCoopSession('Игрок вышел, поэтому игра закончена');
+                        return;
+                    }
+                    if (event.command?.type === 'chat') {
+                        if (event.playerId !== this.playerId) this.addChatMessage(event.playerKey || 'p?', event.command.text || '');
+                        continue;
+                    }
+                    if (!this.isGuest() && event.playerId !== this.playerId) {
+                        this.game.applyRemoteCommand({ ...event.command, playerKey: event.playerKey });
+                        appliedRemoteCommand = true;
+                    }
+                }
+                if (appliedRemoteCommand) this.publishSnapshot();
+            }
+            if (this.isGuest() && data.snapshot && data.snapshot.version !== this.lastAppliedSnapshotVersion) {
+                this.lastAppliedSnapshotVersion = data.snapshot.version || this.lastAppliedSnapshotVersion;
+                this.game.applySnapshot(data.snapshot);
+            }
+            if (this.isGuest() && (!data.snapshot || !data.snapshot.active)) {
+                this.setWaitingForHost();
+            } else {
+                const label = this.playerCount >= 2 ? 'Co-op active: enemy HP reduced, rewards boosted.' : 'Waiting for second player...';
+                this.setStatus(`Room ${this.roomCode}. You are ${this.playerKey.toUpperCase()}. ${label}`, 'ready');
+            }
+            this.game.ui.applyMultiplayerRoleState?.();
+        } catch (err) {
+            this.setStatus(`Room connection problem: ${err.message}`, 'error');
+        }
+    }
+    async publishSnapshot() {
+        if (!this.isRoomActive() || this.isGuest()) return;
+        try {
+            await this.request(`/rooms/${this.roomCode}/snapshot`, {
+                playerId: this.playerId,
+                snapshot: this.game.createSnapshot(),
+            });
+        } catch (err) {
+            this.setStatus(`Snapshot failed: ${err.message}`, 'error');
+        }
+    }
+    async sendCommand(command) {
+        if (!this.isRoomActive()) return false;
+        try {
+            await this.request(`/rooms/${this.roomCode}/events`, {
+                playerId: this.playerId,
+                command,
+            });
+            window.setTimeout(() => this.poll(), 35);
+            return true;
+        } catch (err) {
+            this.setStatus(`Command failed: ${err.message}`, 'error');
+            return false;
+        }
+    }
+    notifyLocalAction() {}
+    addChatMessage(playerKey, text) {
+        if (!this.chatMessages || !text) return;
+        const item = document.createElement('div');
+        item.className = 'coop-chat-message';
+        item.innerHTML = `<strong>${String(playerKey).toUpperCase()}:</strong> ${this.escapeHtml(String(text).slice(0, 120))}`;
+        this.chatMessages.appendChild(item);
+        while (this.chatMessages.children.length > 40) this.chatMessages.removeChild(this.chatMessages.firstChild);
+        this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+    }
+    escapeHtml(text) {
+        return text.replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    }
+    async sendChatMessage() {
+        const text = (this.chatInput?.value || '').trim();
+        if (!text || !this.isRoomActive()) return;
+        if (this.chatInput) this.chatInput.value = '';
+        this.addChatMessage(this.playerKey, text);
+        await this.sendCommand({ type: 'chat', text: text.slice(0, 120) });
+    }
+    sendLeaveBeacon() {
+        if (!this.isRoomActive() || !navigator.sendBeacon) return;
+        const body = JSON.stringify({
+            playerId: this.playerId,
+            command: { type: 'playerLeft' },
+        });
+        navigator.sendBeacon(`${this.serverUrl}/rooms/${this.roomCode}/events`, body);
+    }
+    disconnectLocally() {
+        window.clearInterval(this.pollTimer);
+        window.clearInterval(this.snapshotTimer);
+        this.pollTimer = 0;
+        this.snapshotTimer = 0;
+        this.roomCode = '';
+        this.playerId = '';
+        this.playerKey = 'p1';
+        this.role = 'solo';
+        this.playerCount = 1;
+        this.lastEventId = 0;
+        this.lastAppliedSnapshotVersion = 0;
+        if (this.leaveBtn) this.leaveBtn.hidden = true;
+        if (this.chatEl) this.chatEl.hidden = true;
+        window.removeEventListener('beforeunload', this.beforeUnloadHandler);
+        this.game.syncVisibleGold();
+        this.game.ui.applyMultiplayerRoleState?.();
+    }
+    async leaveRoom() {
+        if (!this.isRoomActive()) return;
+        const message = 'Игрок вышел, поэтому игра закончена';
+        try {
+            await this.sendCommand({ type: 'playerLeft' });
+        } catch (_) {}
+        this.game.endCoopSession(message);
+    }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    const attach = () => {
+        if (!window.game) {
+            window.setTimeout(attach, 50);
+            return;
+        }
+        window.multiplayer = new MultiplayerClient(window.game);
+    };
+    attach();
+});
