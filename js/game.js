@@ -513,9 +513,16 @@ class Game {
     isRoomActive() { return !!this.multiplayer?.isRoomActive?.(); }
     isCoopActive() { return !!this.multiplayer?.isCoopActive?.(); }
     isRemoteViewer() { return !!this.multiplayer?.isGuest?.(); }
+    isHostPlayer() { return this.isRoomActive() && !this.isRemoteViewer(); }
     getLocalPlayerKey() { return this.multiplayer?.getLocalPlayerKey?.() || 'p1'; }
     getDisplayGold() { return this.isRoomActive() ? (this.playerGold[this.getLocalPlayerKey()] ?? 0) : this.gold; }
     syncVisibleGold() { this.ui.updateGold(this.getDisplayGold()); }
+    canControlTower(tower, playerKey = this.getLocalPlayerKey()) {
+        return !!tower && !tower.isDestroyed && (!this.isRoomActive() || (tower.ownerId || 'p1') === playerKey);
+    }
+    getFarmCountForPlayer(playerKey = this.getLocalPlayerKey()) {
+        return this.towers.filter(t => t.isFarm && !t.isDestroyed && (t.ownerId || 'p1') === playerKey).length;
+    }
     spendPlayerGold(playerKey, amount) {
         if (!this.isRoomActive()) {
             if (this.gold < amount) return false;
@@ -540,7 +547,8 @@ class Game {
         }
         this.syncVisibleGold();
     }
-    selectDifficulty(difficultyId) {
+    selectDifficulty(difficultyId, options = {}) {
+        if (this.isRemoteViewer() && !options.fromSnapshot) return this.getDifficultyConfig();
         if (!DIFFICULTY_LEVELS[difficultyId]) return this.getDifficultyConfig();
         this.selectedDifficultyId = difficultyId;
         return this.getDifficultyConfig();
@@ -562,7 +570,8 @@ class Game {
         }
         return next;
     }
-    selectMap(mapId) {
+    selectMap(mapId, options = {}) {
+        if (this.isRemoteViewer() && !options.fromSnapshot) return getMapPreset(this.selectedMapId);
         const preset = getMapPreset(mapId);
         this.selectedMapId = preset.id;
         this.map.setMap(preset.id);
@@ -600,13 +609,14 @@ class Game {
     }
     startMatch(mapId = this.selectedMapId, difficultyId = this.selectedDifficultyId) {
         if (this.isRemoteViewer()) {
-            this.multiplayer?.sendCommand?.({ type: 'requestStart', mapId, difficultyId });
-            return;
+            this.multiplayer?.setWaitingForHost?.();
+            return false;
         }
         this.selectDifficulty(difficultyId);
         this.selectMap(mapId);
         this.resetMatchState(false);
         this.ui.hideStartScreen();
+        return true;
     }
     getPlacementCells(type, col, row) {
         const cfg = TOWER_TYPES[type];
@@ -682,8 +692,8 @@ class Game {
         }
         if (!this.canPlaceTowerAt(towerType, col, row)) return;
         const cfg = TOWER_TYPES[towerType];
-        if (cfg.isFarm) { const fc = this.towers.filter(t => t.isFarm && !t.isDestroyed).length; if (fc >= CONFIG.MAX_FARMS) return; }
         const ownerId = options.ownerId || this.getLocalPlayerKey();
+        if (cfg.isFarm && this.getFarmCountForPlayer(ownerId) >= CONFIG.MAX_FARMS) return;
         if (!this.spendPlayerGold(ownerId, cfg.cost)) return;
         const tower = new Tower(col, row, towerType);
         tower.ownerId = ownerId;
@@ -693,6 +703,74 @@ class Game {
         this.multiplayer?.notifyLocalAction?.({ type: 'placeTower', towerType, col, row, ownerId });
     }
     getTowerAt(col, row) { return this.towers.find(t => !t.isDestroyed && t.occupiesCell(col, row)); }
+    getTowerById(id) { return this.towers.find(t => !t.isDestroyed && t.id === id); }
+    findTowerForNetworkRef(ref = {}) {
+        return this.getTowerById(ref.towerId || ref.id)
+            || this.towers.find(t => !t.isDestroyed && t.col === ref.col && t.row === ref.row && (!(ref.type || ref.towerType) || t.type === (ref.type || ref.towerType)));
+    }
+    upgradeTower(tower, options = {}) {
+        if (!tower || tower.isDestroyed || tower.isNukeSilo || tower.isBusy() || !tower.canUpgrade()) return false;
+        const ownerId = options.ownerId || options.playerKey || this.getLocalPlayerKey();
+        if (!this.canControlTower(tower, ownerId)) return false;
+        if (this.isRemoteViewer() && !options.fromNetwork) {
+            this.multiplayer?.sendCommand?.({ type: 'upgradeTower', towerId: tower.id, col: tower.col, row: tower.row, towerType: tower.type });
+            return true;
+        }
+        const cost = tower.getUpgradeCost();
+        if (!this.spendPlayerGold(ownerId, cost)) return false;
+        const upgraded = tower.upgrade();
+        if (upgraded) {
+            this.syncVisibleGold();
+            if (this.audio) this.audio.playUpgrade();
+        }
+        return upgraded;
+    }
+    sellTower(tower, options = {}) {
+        if (!tower || tower.isDestroyed) return false;
+        const ownerId = options.ownerId || options.playerKey || this.getLocalPlayerKey();
+        if (!this.canControlTower(tower, ownerId)) return false;
+        if (this.isRemoteViewer() && !options.fromNetwork) {
+            this.multiplayer?.sendCommand?.({ type: 'sellTower', towerId: tower.id, col: tower.col, row: tower.row, towerType: tower.type });
+            return true;
+        }
+        const sellValue = tower.getSellValue();
+        if (this.isRoomActive()) this.playerGold[ownerId] = (this.playerGold[ownerId] || 0) + sellValue;
+        else {
+            this.gold += sellValue;
+            this.playerGold.p1 = this.gold;
+        }
+        this.restoreTowerCells(tower);
+        this.towers = this.towers.filter(t => t !== tower);
+        this.syncMapOccupancy();
+        this.removeTowerFromSelections(tower);
+        this.syncVisibleGold();
+        if (this.audio) this.audio.playSell();
+        return true;
+    }
+    selectTowerPayload(tower, kind, options = {}) {
+        if (!tower || tower.isDestroyed || !tower.isNukeSilo) return false;
+        const ownerId = options.ownerId || options.playerKey || this.getLocalPlayerKey();
+        if (!this.canControlTower(tower, ownerId)) return false;
+        if (this.isRemoteViewer() && !options.fromNetwork) {
+            this.multiplayer?.sendCommand?.({ type: 'selectPayload', towerId: tower.id, kind });
+            return true;
+        }
+        return tower.selectPayload(kind);
+    }
+    buyTowerPayload(tower, kind, options = {}) {
+        if (!tower || tower.isDestroyed || !tower.isNukeSilo) return false;
+        const payload = NUCLEAR_PAYLOADS[kind];
+        const ownerId = options.ownerId || options.playerKey || this.getLocalPlayerKey();
+        if (!payload || !this.canControlTower(tower, ownerId)) return false;
+        if (this.isRemoteViewer() && !options.fromNetwork) {
+            this.multiplayer?.sendCommand?.({ type: 'buyPayload', towerId: tower.id, kind });
+            return true;
+        }
+        if (!this.spendPlayerGold(ownerId, payload.cost)) return false;
+        tower.addPayload(kind);
+        if (this.audio) this.audio.playNukeLoad(kind);
+        return true;
+    }
     getTowerAtPoint(x, y) {
         let best = null;
         let bestDistance = Infinity;
@@ -1022,8 +1100,8 @@ class Game {
     skipCountdown() {
         if (this.gameState !== 'countdown') return;
         if (this.isRemoteViewer()) {
-            this.multiplayer?.sendCommand?.({ type: 'skipCountdown' });
-            return;
+            this.multiplayer?.setStatus?.('Только главный игрок может запускать волну.', 'error');
+            return false;
         }
         const bonus = this.getCurrentSkipBonus();
         if (bonus > 0) {
@@ -1032,10 +1110,14 @@ class Game {
             this.floatingTexts.push(new FloatingText(center.x, this.cameraY + 7, '+' + bonus + ' БОНУС', '#a78bfa'));
         }
         this.startNextWave();
+        return true;
     }
     update(dt) {
         if (this.isRemoteViewer()) {
+            dt = Math.min(dt, 0.1);
             this.updateCamera(dt);
+            this.updateRemotePresentation(dt);
+            this.ui.tick(dt);
             return;
         }
         if (this.isPaused || this.gameState === 'won' || this.gameState === 'lost') return;
@@ -1234,6 +1316,18 @@ class Game {
         if (this.gameState === 'playing' && this.currentWave >= CONFIG.TOTAL_WAVES && this.waveSpawningDone && this.enemies.length === 0) {
             this.gameState = 'won'; this.ui.showGameOver(true); this.audio.playGameOver(true);
         }
+    }
+    updateRemotePresentation(dt) {
+        this.baseHitFlash = Math.max(0, this.baseHitFlash - dt * 2.8);
+        this.bossIntroTimer = Math.max(0, this.bossIntroTimer - dt);
+        if (this.gameState === 'countdown') {
+            this.waveCountdown = Math.max(0, this.waveCountdown - dt);
+            this.ui.updateCountdown(Math.max(0, this.waveCountdown), this.getCurrentSkipBonus());
+        }
+        for (const enemy of this.enemies) enemy.updateRemotePresentation?.(dt);
+        for (const tower of this.towers) tower.updateRemotePresentation?.(dt);
+        for (let i = this.effects.length - 1; i >= 0; i--) { this.effects[i].update(dt); if (this.effects[i].done) this.effects.splice(i, 1); }
+        for (let i = this.floatingTexts.length - 1; i >= 0; i--) { this.floatingTexts[i].update(dt); if (this.floatingTexts[i].done) this.floatingTexts.splice(i, 1); }
     }
     render() {
         const ctx = this.ctx; ctx.clearRect(0, 0, CONFIG.CANVAS_WIDTH, CONFIG.CANVAS_HEIGHT);
@@ -1692,12 +1786,36 @@ class Game {
             });
             return;
         }
-        if (command.type === 'skipCountdown') {
-            this.skipCountdown();
+        if (command.type === 'upgradeTower') {
+            this.upgradeTower(this.findTowerForNetworkRef(command), {
+                ownerId: command.playerKey || command.ownerId || 'p2',
+                fromNetwork: true,
+            });
             return;
         }
-        if (command.type === 'requestStart' && this.gameState === 'menu') {
-            this.startMatch(command.mapId || this.selectedMapId, command.difficultyId || this.selectedDifficultyId);
+        if (command.type === 'sellTower') {
+            this.sellTower(this.findTowerForNetworkRef(command), {
+                ownerId: command.playerKey || command.ownerId || 'p2',
+                fromNetwork: true,
+            });
+            return;
+        }
+        if (command.type === 'selectPayload') {
+            this.selectTowerPayload(this.findTowerForNetworkRef(command), command.kind, {
+                ownerId: command.playerKey || command.ownerId || 'p2',
+                fromNetwork: true,
+            });
+            return;
+        }
+        if (command.type === 'buyPayload') {
+            this.buyTowerPayload(this.findTowerForNetworkRef(command), command.kind, {
+                ownerId: command.playerKey || command.ownerId || 'p2',
+                fromNetwork: true,
+            });
+            return;
+        }
+        if (command.type === 'skipCountdown' && (command.playerKey || command.ownerId) === 'p1') {
+            this.skipCountdown();
         }
     }
     createSnapshot() {
@@ -1719,7 +1837,7 @@ class Game {
     }
     applySnapshot(snapshot) {
         if (!snapshot || !this.isRemoteViewer()) return;
-        if (snapshot.mapId && snapshot.mapId !== this.selectedMapId) this.selectMap(snapshot.mapId);
+        if (snapshot.mapId && snapshot.mapId !== this.selectedMapId) this.selectMap(snapshot.mapId, { fromSnapshot: true });
         this.selectedDifficultyId = snapshot.difficultyId || this.selectedDifficultyId;
         this.gameState = snapshot.gameState || this.gameState;
         this.lives = snapshot.lives ?? this.lives;
@@ -1728,22 +1846,65 @@ class Game {
         this.waveCountdown = snapshot.waveCountdown ?? this.waveCountdown;
         this.waveSpawningDone = !!snapshot.waveSpawningDone;
         this.playerGold = { p1: 0, p2: 0, ...(snapshot.playerGold || {}) };
-        this.towers = (snapshot.towers || []).map(data => new Tower(data.col, data.row, data.type).applySnapshot(data));
-        this.enemies = (snapshot.enemies || []).map(data => new Enemy(data.type, this.map, {
-            hp: data.maxHp,
-            speed: data.baseSpeed,
-            reward: data.reward,
-            isBoss: data.isBoss,
-            bossStage: data.bossStage,
-            bossPersona: data.bossPersona,
-        }).applySnapshot(data));
+        this.syncTowerSnapshots(snapshot.towers || []);
+        this.syncEnemySnapshots(snapshot.enemies || []);
         this.projectiles = [];
         this.syncMapOccupancy();
         this.ui.updateLives(this.lives);
         this.ui.updateWave(this.currentWave);
         this.syncVisibleGold();
         this.ui.updateTowerButtons();
+        if (this.gameState === 'menu' || this.ui.startScreen?.style.display !== 'none') {
+            this.ui.refreshMapSelection?.();
+            this.ui.refreshDifficultySelection?.();
+        }
+        if (this.gameState === 'countdown') this.ui.updateCountdown(Math.max(0, this.waveCountdown), this.getCurrentSkipBonus());
+        else if (this.gameState === 'playing') this.ui.showWaveActive(this.currentWave);
+        this.ui.applyMultiplayerRoleState?.();
         if (snapshot.active) this.ui.hideStartScreen();
+    }
+    syncTowerSnapshots(towerSnapshots) {
+        const selectedId = this.selectedTower?.id || null;
+        const selectedIds = new Set((this.selectedTowers || []).map(t => t.id));
+        const byId = new Map(this.towers.map(t => [t.id, t]));
+        const next = [];
+        for (const data of towerSnapshots) {
+            let tower = (data.id && byId.get(data.id))
+                || this.towers.find(t => !next.includes(t) && !t.isDestroyed && t.col === data.col && t.row === data.row && t.type === data.type);
+            if (!tower) tower = new Tower(data.col, data.row, data.type);
+            tower.applySnapshot(data);
+            next.push(tower);
+        }
+        this.towers = next;
+        this.selectedTower = selectedId ? (this.towers.find(t => t.id === selectedId) || null) : null;
+        this.selectedTowers = this.towers.filter(t => selectedIds.has(t.id));
+        if (this.selectedTower && !this.selectedTowers.includes(this.selectedTower)) this.selectedTowers.unshift(this.selectedTower);
+        if (!this.selectedTower && this.selectedTowers.length) this.selectedTower = this.selectedTowers[0];
+    }
+    syncEnemySnapshots(enemySnapshots) {
+        const selectedId = this.selectedEnemy?.id || null;
+        const byId = new Map(this.enemies.map(e => [e.id, e]));
+        const next = [];
+        for (const data of enemySnapshots) {
+            let enemy = data.id ? byId.get(data.id) : null;
+            if (!enemy) {
+                enemy = new Enemy(data.type, this.map, {
+                    id: data.id,
+                    hp: data.maxHp,
+                    speed: data.baseSpeed,
+                    reward: data.reward,
+                    isBoss: data.isBoss,
+                    bossStage: data.bossStage,
+                    bossPersona: data.bossPersona,
+                });
+                enemy.applySnapshot(data, false);
+            } else {
+                enemy.applySnapshot(data, true);
+            }
+            next.push(enemy);
+        }
+        this.enemies = next;
+        this.selectedEnemy = selectedId ? (this.enemies.find(e => e.id === selectedId) || null) : null;
     }
     applyCoopHpBoostToAliveEnemies() {
         for (const enemy of this.enemies) {
