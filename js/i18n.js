@@ -192,6 +192,7 @@ const I18N = (() => {
         ['Все ключевые параметры усилены на', 'All key stats are boosted by'],
         ['ПРОИЗВОДСТВО', 'PRODUCTION'],
         ['ЗАПУСК МАШИНЫ', 'VEHICLE LAUNCH'],
+        ['ЗАПУСК', 'LAUNCH'],
         ['До выезда:', 'Launch in:'],
         ['Бронемашина едет от базы навстречу волне и таранит врагов.', 'The armored car drives from the base into the wave and rams enemies.'],
         ['КУПИТЬ МАШИНУ', 'BUY VEHICLE'],
@@ -368,4 +369,97 @@ const I18N = (() => {
     init();
 
     return { apply, toggle, translate, get lang() { return currentLang; } };
+})();
+
+(function installFactoryVehicleHudPatch() {
+    function patch() {
+        if (typeof UI === 'undefined' || !UI?.prototype || UI.prototype.__tdFactoryVehicleHudPatched) return;
+        UI.prototype.__tdFactoryVehicleHudPatched = true;
+
+        const ensureVehicleButton = (ui) => {
+            if (!ui?.towerHud) return null;
+            if (!ui.hudVehicleBtn) {
+                ui.hudVehicleBtn = document.getElementById('hud-vehicle');
+            }
+            if (!ui.hudVehicleBtn) {
+                ui.hudVehicleBtn = document.createElement('button');
+                ui.hudVehicleBtn.id = 'hud-vehicle';
+                ui.hudVehicleBtn.className = 'tower-hud-btn tower-hud-vehicle';
+                ui.hudVehicleBtn.type = 'button';
+                ui.hudVehicleBtn.textContent = '🚗';
+                ui.towerHud.insertBefore(ui.hudVehicleBtn, ui.hudInfoBtn || null);
+                ui.bindActionPress?.(ui.hudVehicleBtn, () => ui.launchSelectedFactoryVehicle?.());
+            }
+            return ui.hudVehicleBtn;
+        };
+
+        const style = document.createElement('style');
+        style.textContent = `
+            .tower-hud-vehicle {
+                min-width: 150px;
+                border-color: rgba(250, 204, 21, 0.48);
+                background: linear-gradient(180deg, rgba(245, 158, 11, 0.82), rgba(146, 64, 14, 0.96));
+            }
+        `;
+        document.head.appendChild(style);
+
+        const originalInit = UI.prototype.init;
+        UI.prototype.init = function(...args) {
+            const result = originalInit.apply(this, args);
+            ensureVehicleButton(this);
+            return result;
+        };
+
+        if (!UI.prototype.launchSelectedFactoryVehicle) {
+            UI.prototype.launchSelectedFactoryVehicle = function() {
+                const tower = this.game.selectedTower;
+                if (!tower || tower.isDestroyed || !tower.isFactory) return;
+                if (!this.game.buyFactoryVehicle(tower)) return;
+                this.updateGold(this.game.getDisplayGold());
+                this.updateActionHud();
+                if (this.infoMode === 'tower' && this.towerInfoPanel.style.display !== 'none') {
+                    this.showTowerInfo(tower);
+                }
+            };
+        }
+
+        const originalUpdateActionHud = UI.prototype.updateActionHud;
+        UI.prototype.updateActionHud = function(...args) {
+            const result = originalUpdateActionHud.apply(this, args);
+            const btn = ensureVehicleButton(this);
+            const tower = this.game.selectedTower;
+            if (!btn || !tower || tower.isDestroyed || !tower.isFactory) {
+                if (btn) btn.style.display = 'none';
+                return result;
+            }
+            const selectionCount = this.game.selectedTowers?.length || 1;
+            if (selectionCount > 1) {
+                btn.style.display = 'none';
+                return result;
+            }
+            const canControl = this.game.canControlTower(tower);
+            const displayGold = this.game.getDisplayGold();
+            const ready = !tower.isBusy() && !tower.isDisabled() && tower.vehicleBuildTimer <= 0;
+            btn.style.display = 'block';
+            btn.textContent = ready
+                ? `🚗 ЗАПУСК ${tower.vehicleCost}💰`
+                : `⏱ ${this.fmtTime(tower.vehicleBuildTimer || tower.getRemainingWorkTime())}`;
+            btn.disabled = !canControl || !ready || displayGold < tower.vehicleCost;
+            const pos = this.game.worldToScreen(tower.x, tower.y);
+            const areaW = this.canvasWrapper?.clientWidth || window.innerWidth;
+            const areaH = this.canvasWrapper?.clientHeight || window.innerHeight;
+            this.setHudButtonPosition?.(btn, pos.x, pos.y + 96, areaW, areaH);
+            return result;
+        };
+
+        const originalHideActionHud = UI.prototype.hideActionHud;
+        UI.prototype.hideActionHud = function(...args) {
+            const result = originalHideActionHud.apply(this, args);
+            if (this.hudVehicleBtn) this.hudVehicleBtn.style.display = 'none';
+            return result;
+        };
+    }
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', patch);
+    else patch();
 })();
