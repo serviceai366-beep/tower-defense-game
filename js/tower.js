@@ -399,6 +399,7 @@ class Tower {
         }
     }
     updatePulseTower(dt, enemies) {
+        this.turretAngle += dt * 1.35;
         this.cooldown -= dt;
         const effectiveRange = this.getEffectiveRange();
         const visibleEnemies = enemies.filter(e => !e.isDead && !e.reachedEnd && (!e.isInvisible || this.invisibleDetectionLevel >= (e.invisibilityLevel || 1)) && Math.hypot(e.x - this.x, e.y - this.y) <= effectiveRange);
@@ -458,6 +459,7 @@ class Tower {
             rocket: { length: 38, width: 17, color: '#9ca3af', glow: '#ef4444', pods: true, artWidth: 62, pivot: 0.24, muzzle: 37 },
             tesla: { length: 34, width: 12, color: '#60a5fa', glow: '#60a5fa', orb: true, artWidth: 58, pivot: 0.22, muzzle: 35 },
             railgun: { length: 54, width: 10, color: '#93c5fd', glow: '#60a5fa', rail: true, artWidth: 78, pivot: 0.22, muzzle: 53 },
+            pulse: { length: 34, width: 13, color: '#a78bfa', glow: '#c084fc', orb: true, artWidth: 58, pivot: 0.34, muzzle: 32 },
         };
         return profiles[this.type] || null;
     }
@@ -565,11 +567,13 @@ class Tower {
         const profile = this.getBarrelProfile();
         if (!profile || this.isBusy()) return;
         const recoil = Math.max(0, this.muzzleFlash) * 18;
+        const hasArtBarrel = typeof GameSprites !== 'undefined' && !!GameSprites.hasBarrel?.(this.type);
         const art = typeof GameSprites !== 'undefined' ? GameSprites.barrel(this.type) : null;
         if (art) {
             this.drawArtBarrel(ctx, x, y, profile, art, recoil);
             return;
         }
+        if (hasArtBarrel) return;
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(this.turretAngle);
@@ -751,8 +755,13 @@ class Tower {
         ctx.restore();
     }
     renderSpriteBody(ctx, x, y, s, bounds) {
-        const sprite = typeof GameSprites !== 'undefined' ? GameSprites.tower(this.type) : null;
-        if (!sprite) return false;
+        let sprite = null;
+        let waitsForSplitBase = false;
+        if (typeof GameSprites !== 'undefined') {
+            waitsForSplitBase = !!GameSprites.hasTowerBase?.(this.type);
+            sprite = GameSprites.towerBase?.(this.type) || (waitsForSplitBase ? null : GameSprites.tower(this.type));
+        }
+        if (!sprite) return waitsForSplitBase;
 
         if (this.isScanner) {
             const sweep = (Date.now() * 0.002) % (Math.PI * 2);
@@ -783,7 +792,7 @@ class Tower {
         }
 
         ctx.save();
-        const supportScale = this.isAirfield || this.isNukeSilo ? 1.12 : this.isWall ? 0.96 : this.isFarm || this.isHealer ? 1.24 : 1;
+        const supportScale = this.isFactory ? 1.28 : this.isAirfield || this.isNukeSilo ? 1.12 : this.isWall ? 0.96 : this.isFarm || this.isHealer ? 1.24 : 1;
         const targetHeight = Math.max(bounds.height * supportScale, s * (this.isWall ? 0.92 : 1.48));
         const targetWidth = targetHeight * (sprite.naturalWidth / sprite.naturalHeight);
         ctx.fillStyle = 'rgba(0,0,0,0.34)';
@@ -1049,6 +1058,28 @@ class Tower {
     renderAirUnit(ctx) {
         if (!this.isAirfield || this.isDestroyed || this.isBusy()) return;
         const plane = this.getPlanePosition();
+        const art = typeof GameSprites !== 'undefined' ? GameSprites.vehicle?.('airfieldPlane') : null;
+        if (art) {
+            const targetWidth = CONFIG.CELL_SIZE * (this.level >= 3 ? 1.18 : 1.08);
+            const targetHeight = targetWidth * (art.naturalHeight / art.naturalWidth);
+            ctx.save();
+            ctx.fillStyle = 'rgba(0,0,0,0.22)';
+            ctx.beginPath();
+            ctx.ellipse(plane.x + 4, plane.y + 18, targetWidth * 0.28, targetHeight * 0.13, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.translate(plane.x, plane.y);
+            ctx.rotate(this.airAngle + Math.PI / 2);
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(art, -targetWidth / 2, -targetHeight / 2, targetWidth, targetHeight);
+            if (this.level >= 3 && this.rocketDamage > 0) {
+                ctx.fillStyle = 'rgba(245,158,11,0.82)';
+                ctx.fillRect(-targetWidth * 0.18, targetHeight * 0.16, 4, 9);
+                ctx.fillRect(targetWidth * 0.14, targetHeight * 0.16, 4, 9);
+            }
+            ctx.restore();
+            return;
+        }
         ctx.save();
         ctx.fillStyle = 'rgba(0,0,0,0.22)';
         ctx.beginPath(); ctx.ellipse(plane.x + 4, plane.y + 18, 15, 5, 0, 0, Math.PI * 2); ctx.fill();

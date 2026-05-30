@@ -1215,6 +1215,8 @@ body.ui-map-only #canvas-wrapper {
 .tower-btn[data-type="cryo"] .tower-btn-icon,
 .tower-btn[data-type="healer"] .tower-btn-icon,
 .tower-btn[data-type="farm"] .tower-btn-icon,
+.tower-btn[data-type="factory"] .tower-btn-icon,
+.tower-btn[data-type="djBooth"] .tower-btn-icon,
 .tower-btn[data-type="airfield"] .tower-btn-icon,
 .tower-btn[data-type="lightWall"] .tower-btn-icon,
 .tower-btn[data-type="mediumWall"] .tower-btn-icon,
@@ -1229,22 +1231,24 @@ body.ui-map-only #canvas-wrapper {
     filter: drop-shadow(0 5px 6px rgba(0, 0, 0, 0.45));
 }
 
-.tower-btn[data-type="pistol"] .tower-btn-icon { background-image: url("assets/sprites/towers/pistol.png"); }
-.tower-btn[data-type="machinegun"] .tower-btn-icon { background-image: url("assets/sprites/towers/machinegun.png"); }
-.tower-btn[data-type="scanner"] .tower-btn-icon { background-image: url("assets/sprites/towers/scanner.png"); }
-.tower-btn[data-type="flamethrower"] .tower-btn-icon { background-image: url("assets/sprites/towers/flamethrower.png"); }
-.tower-btn[data-type="sniper"] .tower-btn-icon { background-image: url("assets/sprites/towers/sniper.png"); }
-.tower-btn[data-type="rifle"] .tower-btn-icon { background-image: url("assets/sprites/towers/rifle.png"); }
-.tower-btn[data-type="cryo"] .tower-btn-icon { background-image: url("assets/sprites/towers/cryo.png"); }
-.tower-btn[data-type="grenade"] .tower-btn-icon { background-image: url("assets/sprites/towers/grenade.png"); }
-.tower-btn[data-type="rocket"] .tower-btn-icon { background-image: url("assets/sprites/towers/rocket.png"); }
-.tower-btn[data-type="nukeSilo"] .tower-btn-icon { background-image: url("assets/sprites/towers/nukeSilo.png"); }
-.tower-btn[data-type="tesla"] .tower-btn-icon { background-image: url("assets/sprites/towers/tesla.png"); }
-.tower-btn[data-type="pulse"] .tower-btn-icon { background-image: url("assets/sprites/towers/pulse.png"); }
-.tower-btn[data-type="railgun"] .tower-btn-icon { background-image: url("assets/sprites/towers/railgun.png"); }
+.tower-btn[data-type="pistol"] .tower-btn-icon { background-image: url("assets/sprites/menu/pistol-menu-gpt.png"); }
+.tower-btn[data-type="machinegun"] .tower-btn-icon { background-image: url("assets/sprites/menu/machinegun-menu-gpt.png"); }
+.tower-btn[data-type="scanner"] .tower-btn-icon { background-image: url("assets/sprites/menu/scanner-menu-gpt.png"); }
+.tower-btn[data-type="flamethrower"] .tower-btn-icon { background-image: url("assets/sprites/menu/flamethrower-menu-gpt.png"); }
+.tower-btn[data-type="sniper"] .tower-btn-icon { background-image: url("assets/sprites/menu/sniper-menu-gpt.png"); }
+.tower-btn[data-type="rifle"] .tower-btn-icon { background-image: url("assets/sprites/menu/rifle-menu-gpt.png"); }
+.tower-btn[data-type="cryo"] .tower-btn-icon { background-image: url("assets/sprites/menu/cryo-menu-gpt.png"); }
+.tower-btn[data-type="grenade"] .tower-btn-icon { background-image: url("assets/sprites/menu/grenade-menu-gpt.png"); }
+.tower-btn[data-type="rocket"] .tower-btn-icon { background-image: url("assets/sprites/menu/rocket-menu-gpt.png"); }
+.tower-btn[data-type="nukeSilo"] .tower-btn-icon { background-image: url("assets/sprites/menu/nukeSilo-menu-gpt.png"); }
+.tower-btn[data-type="tesla"] .tower-btn-icon { background-image: url("assets/sprites/menu/tesla-menu-gpt.png"); }
+.tower-btn[data-type="pulse"] .tower-btn-icon { background-image: url("assets/sprites/menu/pulse-menu-gpt.png"); }
+.tower-btn[data-type="railgun"] .tower-btn-icon { background-image: url("assets/sprites/menu/railgun-menu-gpt.png"); }
 .tower-btn[data-type="healer"] .tower-btn-icon { background-image: url("assets/sprites/towers/healer.png"); }
 .tower-btn[data-type="farm"] .tower-btn-icon { background-image: url("assets/sprites/towers/farm.png"); }
-.tower-btn[data-type="airfield"] .tower-btn-icon { background-image: url("assets/sprites/towers/airfield.png"); }
+.tower-btn[data-type="factory"] .tower-btn-icon { background-image: url("assets/sprites/menu/factory-menu-gpt.png"); }
+.tower-btn[data-type="djBooth"] .tower-btn-icon { background-image: url("assets/sprites/menu/djBooth-menu-gpt.png"); }
+.tower-btn[data-type="airfield"] .tower-btn-icon { background-image: url("assets/sprites/menu/airfield-menu-gpt.png"); }
 .tower-btn[data-type="lightWall"] .tower-btn-icon { background-image: url("assets/sprites/towers/lightWall.png"); }
 .tower-btn[data-type="mediumWall"] .tower-btn-icon { background-image: url("assets/sprites/towers/mediumWall.png"); }
 .tower-btn[data-type="heavyWall"] .tower-btn-icon { background-image: url("assets/sprites/towers/heavyWall.png"); }

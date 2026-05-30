@@ -89,24 +89,22 @@ class SupportVehicle {
         ctx.beginPath();
         ctx.ellipse(0, size * 0.48, size * 0.82, size * 0.28, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = this.level >= 3 ? '#1e3a8a' : this.level >= 2 ? '#475569' : '#64748b';
-        ctx.fillRect(-size * 0.66, -size * 0.38, size * 1.32, size * 0.76);
-        ctx.fillStyle = this.level >= 3 ? '#93c5fd' : '#cbd5e1';
-        ctx.fillRect(-size * 0.34, -size * 0.56, size * 0.68, size * 0.34);
-        if (this.level >= 2) {
-            ctx.fillStyle = '#facc15';
-            ctx.fillRect(size * 0.1, -size * 0.68, size * 0.42, size * 0.14);
+        const vehicleArt = typeof GameSprites !== 'undefined' ? GameSprites.vehicle?.('factory' + Math.max(1, Math.min(3, this.level))) : null;
+        if (vehicleArt) {
+            const artW = size * 3.6;
+            const artH = artW * (vehicleArt.naturalHeight / vehicleArt.naturalWidth);
+            ctx.drawImage(vehicleArt, -artW / 2, -artH / 2, artW, artH);
+        } else {
+            ctx.fillStyle = this.level >= 3 ? '#1e3a8a' : this.level >= 2 ? '#475569' : '#64748b';
+            ctx.fillRect(-size * 0.66, -size * 0.38, size * 1.32, size * 0.76);
+            ctx.fillStyle = this.level >= 3 ? '#93c5fd' : '#cbd5e1';
+            ctx.fillRect(-size * 0.34, -size * 0.56, size * 0.68, size * 0.34);
+            ctx.fillStyle = '#111827';
+            ctx.fillRect(-size * 0.58, -size * 0.5, size * 0.28, size * 0.18);
+            ctx.fillRect(size * 0.3, -size * 0.5, size * 0.28, size * 0.18);
+            ctx.fillRect(-size * 0.58, size * 0.32, size * 0.28, size * 0.18);
+            ctx.fillRect(size * 0.3, size * 0.32, size * 0.28, size * 0.18);
         }
-        if (this.level >= 3) {
-            ctx.fillStyle = '#0f172a';
-            ctx.fillRect(-size * 0.76, -size * 0.46, size * 1.52, size * 0.14);
-            ctx.fillRect(-size * 0.76, size * 0.32, size * 1.52, size * 0.14);
-        }
-        ctx.fillStyle = '#111827';
-        ctx.fillRect(-size * 0.58, -size * 0.5, size * 0.28, size * 0.18);
-        ctx.fillRect(size * 0.3, -size * 0.5, size * 0.28, size * 0.18);
-        ctx.fillRect(-size * 0.58, size * 0.32, size * 0.28, size * 0.18);
-        ctx.fillRect(size * 0.3, size * 0.32, size * 0.28, size * 0.18);
         if (this.hitFlash > 0) {
             ctx.fillStyle = `rgba(250,204,21,${this.hitFlash})`;
             ctx.beginPath();
