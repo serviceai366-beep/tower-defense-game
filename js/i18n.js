@@ -396,7 +396,7 @@ const I18N = (() => {
         const style = document.createElement('style');
         style.textContent = `
             .tower-hud-vehicle {
-                min-width: 150px;
+                min-width: 92px;
                 border-color: rgba(250, 204, 21, 0.48);
                 background: linear-gradient(180deg, rgba(245, 158, 11, 0.82), rgba(146, 64, 14, 0.96));
             }
@@ -442,13 +442,25 @@ const I18N = (() => {
             const ready = !tower.isBusy() && !tower.isDisabled() && tower.vehicleBuildTimer <= 0;
             btn.style.display = 'block';
             btn.textContent = ready
-                ? `🚗 ЗАПУСК ${tower.vehicleCost}💰`
+                ? `🚗 ${tower.vehicleCost}💰`
                 : `⏱ ${this.fmtTime(tower.vehicleBuildTimer || tower.getRemainingWorkTime())}`;
+            btn.title = ready ? `Запустить машину за ${tower.vehicleCost}` : 'Машина перезаряжается';
             btn.disabled = !canControl || !ready || displayGold < tower.vehicleCost;
             const pos = this.game.worldToScreen(tower.x, tower.y);
             const areaW = this.canvasWrapper?.clientWidth || window.innerWidth;
             const areaH = this.canvasWrapper?.clientHeight || window.innerHeight;
-            this.setHudButtonPosition?.(btn, pos.x, pos.y + 96, areaW, areaH);
+            const rowSpacing = 104;
+            const buttonHalf = 46;
+            const margin = 10;
+            const groupLeft = pos.x - rowSpacing - buttonHalf;
+            const groupRight = pos.x + rowSpacing + buttonHalf;
+            let rowShift = 0;
+            if (groupLeft < margin) rowShift = margin - groupLeft;
+            if (groupRight + rowShift > areaW - margin) rowShift = (areaW - margin) - groupRight;
+            const rowX = pos.x + rowShift;
+            if (this.hudSellBtn) this.setHudButtonPosition?.(this.hudSellBtn, rowX - rowSpacing, pos.y + 36, areaW, areaH);
+            this.setHudButtonPosition?.(btn, rowX, pos.y + 36, areaW, areaH);
+            if (this.hudInfoBtn) this.setHudButtonPosition?.(this.hudInfoBtn, rowX + rowSpacing, pos.y + 36, areaW, areaH);
             return result;
         };
 

@@ -415,6 +415,7 @@ class UI {
         this.towerHud = document.getElementById('tower-action-hud');
         this.hudUpgradeBtn = document.getElementById('hud-upgrade');
         this.hudSellBtn = document.getElementById('hud-sell');
+        this.hudVehicleBtn = document.getElementById('hud-vehicle');
         this.hudInfoBtn = document.getElementById('hud-info');
         this.siloHud = document.getElementById('silo-action-hud');
         this.siloHudCard = this.siloHud?.querySelector('.silo-hud-card') || null;
@@ -559,6 +560,7 @@ class UI {
         });
         this.bindActionPress(this.hudUpgradeBtn, () => this.upgradeSelectedTower());
         this.bindActionPress(this.hudSellBtn, () => this.sellSelectedTower());
+        this.bindActionPress(this.hudVehicleBtn, () => this.launchSelectedFactoryVehicle());
         this.bindActionPress(this.hudInfoBtn, () => this.toggleSelectedTowerInfo());
         this.bindActionPress(this.siloSelectTactical, () => this.selectSiloPayload('tactical'));
         this.bindActionPress(this.siloSelectStrategic, () => this.selectSiloPayload('strategic'));
@@ -1202,14 +1204,41 @@ class UI {
         }
         this.hudSellBtn.textContent = `💰 ${tower.getSellValue()}`;
         this.hudSellBtn.disabled = !canControl;
+        if (this.hudVehicleBtn) {
+            const showVehicleAction = !!tower.isFactory && selectionCount <= 1;
+            this.hudVehicleBtn.style.display = showVehicleAction ? 'block' : 'none';
+            if (showVehicleAction) {
+                const ready = !tower.isBusy() && !tower.isDisabled() && tower.vehicleBuildTimer <= 0;
+                this.hudVehicleBtn.textContent = ready
+                    ? `🚗 ${tower.vehicleCost}💰`
+                    : `⏱ ${this.fmtTime(tower.vehicleBuildTimer || tower.getRemainingWorkTime())}`;
+                this.hudVehicleBtn.title = ready ? `Запустить машину за ${tower.vehicleCost}` : 'Машина перезаряжается';
+                this.hudVehicleBtn.disabled = !canControl || !ready || displayGold < tower.vehicleCost;
+            }
+        }
         const infoOpen = this.infoMode === 'tower' && this.towerInfoPanel.style.display !== 'none';
         this.hudInfoBtn.textContent = infoOpen ? '✕ ИНФО' : 'ℹ ИНФО';
         this.hudInfoBtn.disabled = false;
         this.towerHud.classList.add('visible');
         this.towerHud.setAttribute('aria-hidden', 'false');
         this.setHudButtonPosition(this.hudUpgradeBtn, pos.x, pos.y - 56, areaW, areaH);
-        this.setHudButtonPosition(this.hudSellBtn, pos.x - 78, pos.y + 36, areaW, areaH);
-        this.setHudButtonPosition(this.hudInfoBtn, pos.x + 78, pos.y + 36, areaW, areaH);
+        if (this.hudVehicleBtn && this.hudVehicleBtn.style.display !== 'none') {
+            const rowSpacing = 104;
+            const buttonHalf = 46;
+            const margin = 10;
+            const groupLeft = pos.x - rowSpacing - buttonHalf;
+            const groupRight = pos.x + rowSpacing + buttonHalf;
+            let rowShift = 0;
+            if (groupLeft < margin) rowShift = margin - groupLeft;
+            if (groupRight + rowShift > areaW - margin) rowShift = (areaW - margin) - groupRight;
+            const rowX = pos.x + rowShift;
+            this.setHudButtonPosition(this.hudSellBtn, rowX - rowSpacing, pos.y + 36, areaW, areaH);
+            this.setHudButtonPosition(this.hudVehicleBtn, rowX, pos.y + 36, areaW, areaH);
+            this.setHudButtonPosition(this.hudInfoBtn, rowX + rowSpacing, pos.y + 36, areaW, areaH);
+        } else {
+            this.setHudButtonPosition(this.hudSellBtn, pos.x - 78, pos.y + 36, areaW, areaH);
+            this.setHudButtonPosition(this.hudInfoBtn, pos.x + 78, pos.y + 36, areaW, areaH);
+        }
     }
     applyLayoutState() {
         this.bodyEl.classList.toggle('ui-hide-top', this.topUiHidden);
@@ -1298,6 +1327,16 @@ class UI {
         if (!this.game.sellTower(tower)) return;
         this.updateGold(this.game.getDisplayGold());
         this.hideTowerInfo();
+    }
+    launchSelectedFactoryVehicle() {
+        const tower = this.game.selectedTower;
+        if (!tower || tower.isDestroyed || !tower.isFactory) return;
+        if (!this.game.buyFactoryVehicle(tower)) return;
+        this.updateGold(this.game.getDisplayGold());
+        this.updateActionHud();
+        if (this.infoMode === 'tower' && this.towerInfoPanel.style.display !== 'none') {
+            this.showTowerInfo(tower);
+        }
     }
     toggleSelectedTowerInfo() {
         const tower = this.game.selectedTower;
