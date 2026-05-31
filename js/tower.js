@@ -449,17 +449,17 @@ class Tower {
     }
     getBarrelProfile() {
         const profiles = {
-            pistol: { length: 34, width: 11, color: '#cbd5e1', glow: '#facc15', kind: 'compact', artWidth: 54, pivot: 0.24, muzzle: 31 },
-            machinegun: { length: 43, width: 16, color: '#9ca3af', glow: '#fde047', kind: 'shroud', artWidth: 68, pivot: 0.22, muzzle: 42 },
-            rifle: { length: 42, width: 10, color: '#d6b28b', glow: '#fb923c', kind: 'rifle', artWidth: 70, pivot: 0.22, muzzle: 42 },
-            flamethrower: { length: 34, width: 13, color: '#b45309', glow: '#fb923c', cone: true, artWidth: 62, pivot: 0.22, muzzle: 35 },
-            sniper: { length: 50, width: 7, color: '#94a3b8', glow: '#ef4444', artWidth: 74, pivot: 0.23, muzzle: 49 },
-            grenade: { length: 36, width: 15, color: '#6b7f45', glow: '#ff5722', artWidth: 60, pivot: 0.24, muzzle: 35 },
-            cryo: { length: 41, width: 12, color: '#67e8f9', glow: '#67e8f9', artWidth: 64, pivot: 0.23, muzzle: 40 },
-            rocket: { length: 38, width: 17, color: '#9ca3af', glow: '#ef4444', pods: true, artWidth: 62, pivot: 0.24, muzzle: 37 },
-            tesla: { length: 34, width: 12, color: '#60a5fa', glow: '#60a5fa', orb: true, artWidth: 58, pivot: 0.22, muzzle: 35 },
-            railgun: { length: 54, width: 10, color: '#93c5fd', glow: '#60a5fa', rail: true, artWidth: 78, pivot: 0.22, muzzle: 53 },
-            pulse: { length: 34, width: 13, color: '#a78bfa', glow: '#c084fc', orb: true, artWidth: 58, pivot: 0.34, muzzle: 32 },
+            pistol: { length: 24, width: 9, color: '#cbd5e1', glow: '#facc15', kind: 'compact', artWidth: 38, pivot: 0.42, muzzle: 22 },
+            machinegun: { length: 28, width: 12, color: '#9ca3af', glow: '#fde047', kind: 'shroud', artWidth: 43, pivot: 0.42, muzzle: 25 },
+            rifle: { length: 27, width: 8, color: '#d6b28b', glow: '#fb923c', kind: 'rifle', artWidth: 42, pivot: 0.36, muzzle: 25 },
+            flamethrower: { length: 29, width: 11, color: '#b45309', glow: '#fb923c', cone: true, artWidth: 46, pivot: 0.38, muzzle: 28 },
+            sniper: { length: 32, width: 6, color: '#94a3b8', glow: '#ef4444', artWidth: 44, pivot: 0.30, muzzle: 30 },
+            grenade: { length: 25, width: 13, color: '#6b7f45', glow: '#ff5722', artWidth: 42, pivot: 0.42, muzzle: 24 },
+            cryo: { length: 29, width: 10, color: '#67e8f9', glow: '#67e8f9', artWidth: 48, pivot: 0.38, muzzle: 28 },
+            rocket: { length: 26, width: 14, color: '#9ca3af', glow: '#ef4444', pods: true, artWidth: 42, pivot: 0.44, muzzle: 23 },
+            tesla: { length: 26, width: 10, color: '#60a5fa', glow: '#60a5fa', orb: true, artWidth: 44, pivot: 0.46, muzzle: 26 },
+            railgun: { length: 33, width: 8, color: '#93c5fd', glow: '#60a5fa', rail: true, artWidth: 48, pivot: 0.36, muzzle: 31 },
+            pulse: { length: 24, width: 11, color: '#a78bfa', glow: '#c084fc', orb: true, artWidth: 42, pivot: 0.50, muzzle: 24 },
         };
         return profiles[this.type] || null;
     }
@@ -718,7 +718,7 @@ class Tower {
         const h = w * (art.naturalHeight / art.naturalWidth);
         const pivotX = w * (profile.pivot ?? 0.22);
         const recoilShift = Math.min(7, recoil * 0.26);
-        const muzzleX = Math.max(profile.length, w - pivotX - 3) - recoilShift;
+        const muzzleX = (profile.muzzle ?? Math.max(profile.length, w - pivotX - 3)) - recoilShift;
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(this.turretAngle);
@@ -753,6 +753,37 @@ class Tower {
             }
         }
         ctx.restore();
+    }
+    getSpriteRenderMetrics(sprite, s, bounds) {
+        const hasSplitBase = typeof GameSprites !== 'undefined' && !!GameSprites.hasTowerBase?.(this.type);
+        const singleCell = this.footprint.length === 1;
+        const combatBase = !!this.getBarrelProfile();
+        let maxW = bounds.width * 0.9;
+        let maxH = bounds.height * 0.9;
+
+        if (hasSplitBase && combatBase && singleCell) {
+            maxW = bounds.width * 0.74;
+            maxH = bounds.height * 0.74;
+        } else if (hasSplitBase && singleCell) {
+            maxW = bounds.width * 0.78;
+            maxH = bounds.height * 0.78;
+        } else if (hasSplitBase) {
+            maxW = bounds.width * (this.isAirfield || this.isDjBooth ? 0.74 : 0.78);
+            maxH = bounds.height * (this.isAirfield || this.isDjBooth ? 0.72 : 0.78);
+        } else if (this.isWall) {
+            maxW = bounds.width * 0.82;
+            maxH = bounds.height * 0.82;
+        } else if (this.isFarm || this.isHealer) {
+            maxW = bounds.width * 0.9;
+            maxH = bounds.height * 0.9;
+        }
+
+        const scale = Math.min(maxW / sprite.naturalWidth, maxH / sprite.naturalHeight);
+        return {
+            width: sprite.naturalWidth * scale,
+            height: sprite.naturalHeight * scale,
+            anchorY: hasSplitBase ? 0.5 : 0.62,
+        };
     }
     renderSpriteBody(ctx, x, y, s, bounds) {
         let sprite = null;
@@ -792,19 +823,19 @@ class Tower {
         }
 
         ctx.save();
-        const supportScale = this.isFactory ? 1.28 : this.isAirfield || this.isNukeSilo ? 1.12 : this.isWall ? 0.96 : this.isFarm || this.isHealer ? 1.24 : 1;
-        const targetHeight = Math.max(bounds.height * supportScale, s * (this.isWall ? 0.92 : 1.48));
-        const targetWidth = targetHeight * (sprite.naturalWidth / sprite.naturalHeight);
+        const metrics = this.getSpriteRenderMetrics(sprite, s, bounds);
+        const targetWidth = metrics.width;
+        const targetHeight = metrics.height;
         ctx.fillStyle = 'rgba(0,0,0,0.34)';
         ctx.beginPath();
-        ctx.ellipse(x + 3, y + s * 0.28, targetWidth * 0.34, s * 0.20, 0, 0, Math.PI * 2);
+        ctx.ellipse(x + 2, y + s * 0.22, targetWidth * 0.34, Math.max(4, targetHeight * 0.13), 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.drawImage(sprite, x - targetWidth / 2, y - targetHeight * 0.68, targetWidth, targetHeight);
+        ctx.drawImage(sprite, x - targetWidth / 2, y - targetHeight * metrics.anchorY, targetWidth, targetHeight);
 
         if (this.isPulseTower || this.type === 'tesla') {
             const pulseGlow = 0.14 + Math.max(0, this.muzzleFlash) * 1.4 + Math.sin(Date.now() * 0.006) * 0.04;
             ctx.beginPath();
-            ctx.arc(x, y, s * 0.58, 0, Math.PI * 2);
+            ctx.arc(x, y, s * 0.42, 0, Math.PI * 2);
             ctx.strokeStyle = `rgba(96,165,250,${pulseGlow})`;
             ctx.lineWidth = 2;
             ctx.stroke();
